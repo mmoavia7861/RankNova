@@ -1,0 +1,49 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { createServer } from 'node:http';
+
+const require = createRequire(import.meta.url);
+const { ranknovaApi } = require('../lib/index.cjs');
+
+async function withServer(run) {
+  const server = createServer((req, res) => ranknovaApi(req, res));
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const address = server.address();
+    await run(`http://127.0.0.1:${address.port}`);
+  } finally {
+    await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
+}
+
+test('Firebase HTTP function responds with a real JSON health payload', async () => {
+  await withServer(async base => {
+    const result = await fetch(base + '/api/health');
+    assert.equal(result.status, 200);
+    assert.equal((await result.json()).status, 'ok');
+  });
+});
+
+test('Firebase HTTP function denies untrusted browser origins', async () => {
+  await withServer(async base => {
+    const result = await fetch(base + '/api/audit', {
+      method: 'POST',
+      headers: { 'Origin': 'https://attacker.invalid', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com' })
+    });
+    assert.equal(result.status, 403);
+  });
+});
+
+test('Firebase HTTP function rejects internal URLs without fetching them', async () => {
+  await withServer(async base => {
+    const result = await fetch(base + '/api/audit', {
+      method: 'POST',
+      headers: { 'Origin': 'https://mmoavia7861.github.io', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'http://127.0.0.1/' })
+    });
+    assert.equal(result.status, 400);
+    assert.match((await result.json()).error, /internal|localhost|forbidden/i);
+  });
+});
