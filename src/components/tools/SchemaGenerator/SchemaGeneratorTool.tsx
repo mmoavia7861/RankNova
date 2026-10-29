@@ -33,57 +33,56 @@ export const SchemaGeneratorTool: React.FC = () => {
 
   // Form states
   const [articleData, setArticleData] = useState<ArticleFormData>({
-    headline: 'Technical SEO Optimization in Modern Web Applications',
-    description: 'A deep-dive tutorial into on-page SEO diagnostics, Core Web Vitals, and structured data.',
-    url: 'https://ranknova.app/guides/technical-seo-optimization',
-    image: 'https://ranknova.app/images/seo-guide-banner.jpg',
+    headline: '',
+    description: '',
+    url: '',
+    image: '',
     authorType: 'Person',
-    authorName: 'Sarah Jenkins',
-    publisherName: 'RankNova',
-    publisherLogoUrl: 'https://ranknova.app/assets/logo.png',
-    datePublished: '2026-10-15',
-    dateModified: '2026-10-29'
+    authorName: '',
+    publisherName: '',
+    publisherLogoUrl: '',
+    datePublished: '',
+    dateModified: ''
   });
 
   const [productData, setProductData] = useState<ProductFormData>({
-    name: 'RankNova SEO Professional Suite',
-    description: 'Comprehensive technical SEO diagnostic suite with SSRF-protected crawler and schema builder.',
-    image: 'https://ranknova.app/images/product-suite.jpg',
-    sku: 'RN-SEO-PRO',
-    brand: 'RankNova',
+    name: '',
+    description: '',
+    image: '',
+    sku: '',
+    brand: '',
     currency: 'USD',
-    price: '49.00',
+    price: '',
     availability: 'https://schema.org/InStock',
     itemCondition: 'https://schema.org/NewCondition',
-    url: 'https://ranknova.app/pricing',
-    includeRating: true,
-    ratingValue: '4.9',
-    reviewCount: '128'
+    url: '',
+    includeRating: false,
+    ratingValue: '',
+    reviewCount: ''
   });
 
   const [localBusinessData, setLocalBusinessData] = useState<LocalBusinessFormData>({
-    name: 'RankNova Digital Consulting',
+    name: '',
     businessType: 'LocalBusiness',
-    description: 'Expert technical SEO consulting and digital growth strategy.',
-    url: 'https://ranknova.app',
-    telephone: '+1-555-0199',
-    image: 'https://ranknova.app/images/office.jpg',
-    streetAddress: '100 Innovation Way',
-    addressLocality: 'San Francisco',
-    addressRegion: 'CA',
-    postalCode: '94105',
-    addressCountry: 'US',
-    latitude: '37.7749',
-    longitude: '-122.4194',
-    openingHours: 'Mo-Fr 09:00-17:00',
-    priceRange: '$$'
+    description: '',
+    url: '',
+    telephone: '',
+    image: '',
+    streetAddress: '',
+    addressLocality: '',
+    addressRegion: '',
+    postalCode: '',
+    addressCountry: '',
+    latitude: '',
+    longitude: '',
+    openingHours: '',
+    priceRange: ''
   });
 
   const [breadcrumbData, setBreadcrumbData] = useState<BreadcrumbFormData>({
     items: [
-      { name: 'Home', url: 'https://ranknova.app/' },
-      { name: 'SEO Tools', url: 'https://ranknova.app/tools' },
-      { name: 'Schema JSON-LD Generator', url: 'https://ranknova.app/tools/schema-generator' }
+      { name: '', url: '' },
+      { name: '', url: '' },
     ]
   });
 
@@ -114,9 +113,11 @@ export const SchemaGeneratorTool: React.FC = () => {
     return validateSchemaInput(activeType, rawData);
   }, [activeType, articleData, productData, localBusinessData, breadcrumbData]);
 
+  const hasSchemaErrors = validationNotices.some(notice => notice.type === 'error');
   const jsonLdCode = formatJsonLd(currentSchemaObj);
 
   const handleCopyCode = () => {
+    if (hasSchemaErrors) return;
     navigator.clipboard.writeText(jsonLdCode);
     setCopied(true);
     trackEvent('schema_copied', { type: activeType });
@@ -124,6 +125,7 @@ export const SchemaGeneratorTool: React.FC = () => {
   };
 
   const handleDownload = () => {
+    if (hasSchemaErrors) return;
     const blob = new Blob([JSON.stringify(currentSchemaObj, null, 2)], {
       type: 'application/ld+json'
     });
@@ -594,6 +596,9 @@ export const SchemaGeneratorTool: React.FC = () => {
             )}
           </div>
 
+          <p className="text-xs text-slate-600 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+            Start by entering your own accurate information. RankNova never inserts invented businesses, reviews, prices, authors, or addresses into published markup. Copy and download unlock after required fields are valid.
+          </p>
           {/* Validation Notices */}
           {validationNotices.length > 0 && (
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2 text-xs">
@@ -621,12 +626,13 @@ export const SchemaGeneratorTool: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Code2 className="w-4 h-4 text-blue-600" />
-                <h3 className="text-sm font-bold text-slate-900">Live JSON-LD Output</h3>
+                <h3 className="text-sm font-bold text-slate-900">{hasSchemaErrors ? 'Draft JSON-LD — complete required fields' : 'Live JSON-LD Output'}</h3>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleDownload}
+                  disabled={hasSchemaErrors}
                   className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 cursor-pointer"
                   title="Download .jsonld"
                 >
@@ -634,6 +640,7 @@ export const SchemaGeneratorTool: React.FC = () => {
                 </button>
                 <button
                   onClick={handleCopyCode}
+                  disabled={hasSchemaErrors}
                   className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
                 >
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
