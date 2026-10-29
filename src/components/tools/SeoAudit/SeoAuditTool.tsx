@@ -25,7 +25,7 @@ import { WorkspaceFormsModal } from '../../workspace/WorkspaceFormsModal';
 import { AdSlot } from '../../layout/AdSlot';
 import { auth, db, handleFirestoreError, OperationType } from '../../../lib/firebase';
 import { addDoc, collection } from 'firebase/firestore';
-import { API_CONFIGURED, IS_GITHUB_PAGES, apiEndpoint, checkApiHealth } from '../../../lib/apiClient';
+import { API_CONFIGURED, apiEndpoint, checkApiHealth } from '../../../lib/apiClient';
 
 export const SeoAuditTool: React.FC = () => {
   const [urlInput, setUrlInput] = useState('');
@@ -195,7 +195,7 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {apiUnavailable && (
         <div role="status" className="max-w-3xl mx-auto rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-          {!API_CONFIGURED && IS_GITHUB_PAGES
+          {!API_CONFIGURED
             ? 'SEO Audit requires a connected API backend. The site owner has not configured the Cloud Run URL yet; live audits are temporarily unavailable.'
             : apiStatus === 'checking'
             ? 'Checking connection to the real SEO audit server...'
