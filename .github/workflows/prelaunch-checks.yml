@@ -1,0 +1,32 @@
+name: Prelaunch quality checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript checks
+        run: npm run lint
+      - name: Unit and integrity tests
+        run: npm test
+      - name: Build GitHub Pages frontend
+        env:
+          GITHUB_PAGES: 'true'
+        run: npm run build
