@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Search,
   CheckCircle2,
@@ -25,6 +25,7 @@ import { WorkspaceFormsModal } from '../../workspace/WorkspaceFormsModal';
 import { AdSlot } from '../../layout/AdSlot';
 import { auth, db, handleFirestoreError, OperationType } from '../../../lib/firebase';
 import { addDoc, collection } from 'firebase/firestore';
+import { API_CONFIGURED, IS_GITHUB_PAGES, apiEndpoint, checkApiHealth } from '../../../lib/apiClient';
 
 export const SeoAuditTool: React.FC = () => {
   const [urlInput, setUrlInput] = useState('');
@@ -42,7 +43,20 @@ export const SeoAuditTool: React.FC = () => {
   const [keepModalOpen, setKeepModalOpen] = useState(false);
   const [formsModalOpen, setFormsModalOpen] = useState(false);
 
-  const isStaticPreview = typeof window !== 'undefined' && window.location.hostname.endsWith('.github.io');
+  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>(
+    API_CONFIGURED ? 'checking' : 'offline'
+  );
+
+  useEffect(() => {
+    let mounted = true;
+    if (!API_CONFIGURED) return;
+    checkApiHealth().then(online => {
+      if (mounted) setApiStatus(online ? 'online' : 'offline');
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  const apiUnavailable = !API_CONFIGURED || apiStatus !== 'online';
 
   const sampleUrls = [
     'https://example.com',
@@ -52,8 +66,8 @@ export const SeoAuditTool: React.FC = () => {
 
   const handleRunAudit = async (urlToTest?: string) => {
     const target = (urlToTest || urlInput).trim();
-    if (isStaticPreview) {
-      setError('SEO Audit is unavailable on GitHub Pages because this feature needs a running Express backend. Use the live full-stack domain after deployment.');
+    if (apiUnavailable) {
+      setError('SEO Audit server is not connected or is currently unreachable. Please try again when the server is online.');
       return;
     }
     if (!target) {
@@ -69,18 +83,25 @@ export const SeoAuditTool: React.FC = () => {
     trackEvent('audit_started', { domain: sanitizeUrlForAnalytics(target) });
 
     try {
-      const response = await fetch('/api/audit', {
+      const response = await fetch(apiEndpoint('/api/audit'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(20000),
         body: JSON.stringify({ url: target })
       });
 
+      if (!response.headers.get('content-type')?.includes('application/json')) {
+        throw new Error('Audit API returned an unexpected response. Check the backend URL and server configuration.');
+      }
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error || `Server returned error (${response.status})`);
       }
 
+      if (typeof data.score !== 'number' || !Array.isArray(data.checks)) {
+        throw new Error('Audit server returned an invalid report. Please contact support.');
+      }
       setReport(data);
       trackEvent('audit_completed', {
         domain: sanitizeUrlForAnalytics(target),
@@ -172,9 +193,19 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {isStaticPreview && (
+      {apiUnavailable && (
         <div role="status" className="max-w-3xl mx-auto rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-          This GitHub Pages site is a frontend preview. Website SEO Audit requires a deployed API server and cannot run here. We do not show invented audit scores.
+          {!API_CONFIGURED && IS_GITHUB_PAGES
+            ? 'SEO Audit requires a connected API backend. The site owner has not configured the Cloud Run URL yet; live audits are temporarily unavailable.'
+            : apiStatus === 'checking'
+            ? 'Checking connection to the real SEO audit server...'
+            : 'SEO Audit server is currently unavailable. No sample scores or fabricated results will be displayed.'}
+          {API_CONFIGURED && apiStatus === 'offline' && (
+            <button type="button" className="ml-2 underline font-semibold" onClick={() => {
+              setApiStatus('checking');
+              checkApiHealth().then(online => setApiStatus(online ? 'online' : 'offline'));
+            }}>Retry connection</button>
+          )}
         </div>
       )}
       {/* Tool Header */}
@@ -215,7 +246,7 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
           </div>
           <button
             type="submit"
-            disabled={loading || isStaticPreview}
+            disabled={loading || apiUnavailable}
             className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
           >
             {loading ? (
@@ -239,7 +270,7 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
             <button
               key={sample}
               type="button"
-              disabled={isStaticPreview}
+              disabled={apiUnavailable}
               onClick={() => {
                 setUrlInput(sample);
                 handleRunAudit(sample);
