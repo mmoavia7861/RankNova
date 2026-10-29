@@ -32,7 +32,7 @@ app.use('/api', (req, res, next) => {
   let sameOrigin = false;
   try {
     const parsed = new URL(origin);
-    sameOrigin = parsed.host === req.get('host') && parsed.protocol === 'https:';
+    sameOrigin = parsed.host === req.get('host') && (parsed.protocol === 'https:' || (!isProduction && parsed.protocol === 'http:'));
   } catch {
     return res.status(403).json({ error: 'Invalid request origin.' });
   }
