@@ -158,6 +158,7 @@ app.post('/api/search-grounding', async (req, res) => {
 
   try {
     const insights = await getGroundedSerpInsights(keyword, topic || keyword, brand);
+    if (!insights) return res.status(503).json({ error: 'Search analysis has not been configured or is unavailable.' });
     return res.json({ insights });
   } catch (err: unknown) {
     return res.status(500).json({ error: 'Search grounding temporarily unavailable.' });
