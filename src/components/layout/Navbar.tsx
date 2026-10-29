@@ -50,7 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, current
               aria-label="RankNova Home"
             >
               <img
-                src="/assets/aistudio/RankNova_Growth_Analytics_Logo_037f0c19.png"
+                src={`${import.meta.env.BASE_URL}assets/aistudio/RankNova_Growth_Analytics_Logo_037f0c19.png`}
                 alt="RankNova Logo"
                 className="h-9 w-auto object-contain transition-transform group-hover:scale-105"
               />
