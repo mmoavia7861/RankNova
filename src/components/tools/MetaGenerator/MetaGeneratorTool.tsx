@@ -54,8 +54,8 @@ export const MetaGeneratorTool: React.FC = () => {
   }, [keyword, topic, brand, url, intent]);
 
   // Set default selected title & desc if not yet customized
-  const currentTitle = selectedTitle || generatedResult.variants[0]?.title || '';
-  const currentDesc = selectedDesc || generatedResult.variants[0]?.description || '';
+  const currentTitle = keyword.trim() ? (selectedTitle || generatedResult.variants[0]?.title || '') : '';
+  const currentDesc = keyword.trim() ? (selectedDesc || generatedResult.variants[0]?.description || '') : '';
 
   const titleChars = currentTitle.length;
   const titlePixels = estimateTitlePixelWidth(currentTitle);
@@ -328,7 +328,7 @@ ${safeUrl ? `<meta name="twitter:url" content="${safeUrl}" />` : ''}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-blue-600" />
-                <h3 className="text-sm font-bold text-slate-900">Live Google SERP Simulator</h3>
+                <h3 className="text-sm font-bold text-slate-900">Approximate Google Search Result Preview</h3>
               </div>
 
               {/* Device Toggle */}
@@ -420,7 +420,7 @@ ${safeUrl ? `<meta name="twitter:url" content="${safeUrl}" />` : ''}
                       titlePixels <= 580 ? 'text-emerald-600' : 'text-amber-600'
                     }`}
                   >
-                    ~{titlePixels}px / 600px max
+                    ~{titlePixels}px (rough estimate)
                   </span>
                 </div>
                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
@@ -432,7 +432,7 @@ ${safeUrl ? `<meta name="twitter:url" content="${safeUrl}" />` : ''}
                   />
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  {titleChars} characters (Ideal: 50–60 chars)
+                  {titleChars} characters (no fixed Google title limit)
                 </div>
               </div>
 
@@ -456,7 +456,7 @@ ${safeUrl ? `<meta name="twitter:url" content="${safeUrl}" />` : ''}
                   />
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  Desktop truncates at ~160; Mobile at ~120
+                  Display depends on query, device and Google's chosen snippet
                 </div>
               </div>
             </div>
