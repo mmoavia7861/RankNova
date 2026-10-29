@@ -11,7 +11,7 @@ import {
   Save
 } from 'lucide-react';
 import { auth, db, handleFirestoreError, OperationType, isUserAdmin, ADMIN_EMAIL } from '../lib/firebase';
-import { googleWorkspaceSignIn } from '../lib/workspace';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import {
   collection,
   getDocs,
@@ -188,10 +188,10 @@ export const AdminPage: React.FC = () => {
           This portal is restricted to the platform owner (<code>{ADMIN_EMAIL}</code>). Please authenticate with your verified Google account.
         </p>
         <button
-          onClick={() => googleWorkspaceSignIn()}
+          onClick={() => signInWithPopup(auth, new GoogleAuthProvider()).catch(error => { console.error('Admin sign-in failed', error); alert('Unable to sign in. Check your Google account and Firebase authorized domains.'); })}
           className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
         >
-          Sign in with Authorized Google Account
+          Sign in with Owner Google Account
         </button>
       </div>
     );
