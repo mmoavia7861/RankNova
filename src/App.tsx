@@ -18,16 +18,28 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { trackEvent } from './lib/analytics';
 
+// For project-hosted GitHub Pages, strip the /RankNova prefix when matching routes.
+// Cloud Run continues to use the root path as before.
+const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+function getCurrentRoute(): string {
+  const pathname = window.location.pathname;
+  if (BASE_PATH && (pathname === BASE_PATH || pathname.startsWith(BASE_PATH + '/'))) {
+    return pathname.slice(BASE_PATH.length) || '/';
+  }
+  return pathname;
+}
+
 export default function App() {
   const [currentPath, setCurrentPath] = useState(
-    typeof window !== 'undefined' ? window.location.pathname : '/'
+    typeof window !== 'undefined' ? getCurrentRoute() : '/'
   );
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Synchronize browser history and route state
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentPath(window.location.pathname);
+      setCurrentPath(getCurrentRoute());
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -58,7 +70,7 @@ export default function App() {
 
   const navigate = (path: string) => {
     if (path !== currentPath) {
-      window.history.pushState({}, '', path);
+      window.history.pushState({}, '', BASE_PATH + path);
       setCurrentPath(path);
       window.scrollTo(0, 0);
 

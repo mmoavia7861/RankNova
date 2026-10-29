@@ -27,7 +27,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
           <div className="flex justify-center mb-4">
             <img
-              src="/assets/aistudio/RankNova_Growth_Analytics_Logo_037f0c19.png"
+              src={`${import.meta.env.BASE_URL}assets/aistudio/RankNova_Growth_Analytics_Logo_037f0c19.png`}
               alt="RankNova"
               className="h-16 sm:h-20 w-auto object-contain drop-shadow-sm"
             />
