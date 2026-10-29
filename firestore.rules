@@ -70,26 +70,3 @@ service cloud.firestore {
     }
   }
 }
-) &&
-        request.resource.data.subject is string && request.resource.data.subject.size() <= 160 &&
-        request.resource.data.message is string && request.resource.data.message.size() >= 5 &&
-        request.resource.data.message.size() <= 4096 &&
-        request.resource.data.createdAt is string && request.resource.data.createdAt.size() <= 40;
-      allow read, list, update, delete: if isAdmin();
-    }
-
-    // Site settings & tool configurations
-    match /settings/{settingId} {
-      allow get: if true;
-      allow list: if true;
-      allow create, update, delete: if isAdmin();
-    }
-
-    // Admin identities
-    match /admins/{adminId} {
-      allow get: if isSignedIn();
-      allow list: if isAdmin();
-      allow write: if isAdmin();
-    }
-  }
-}
