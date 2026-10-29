@@ -101,6 +101,8 @@ export const MetaGeneratorTool: React.FC = () => {
         if (data.insights.suggestedDescriptions?.length > 0) {
           setSelectedDesc(data.insights.suggestedDescriptions[0]);
         }
+      } else {
+        setGroundingError('Live search analysis is not configured for this server. The local Meta Generator remains available.');
       }
     } catch (err) {
       console.warn('Grounding fetch failed:', err);
