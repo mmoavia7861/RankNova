@@ -134,6 +134,11 @@ app.post('/api/search-grounding', async (req, res) => {
   }
 });
 
+// Unknown API routes should return JSON 404, not HTML from the React SPA.
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'API endpoint not found.' });
+});
+
 // Route-specific HTML metadata for prerendering / crawler discovery
 const ROUTE_METADATA: Record<string, { title: string; description: string }> = {
   '/': {
