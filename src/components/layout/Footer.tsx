@@ -20,11 +20,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               />
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">
-              High-intent, transparent SEO diagnostics and markup utilities. Built browser-first, fortified with SSRF protections, and integrated with Google Workspace.
+              Browser-based SEO metadata and structured-data tools. Live auditing and Workspace features need separately configured services.
             </p>
             <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/80 w-fit">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>OWASP-Grade SSRF Defense</span>
+              <span>Security-aware tooling</span>
             </div>
           </div>
 
@@ -170,8 +170,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-400 pt-4">
             <p>&copy; {new Date().getFullYear()} RankNova Analytics. All rights reserved.</p>
             <div className="flex items-center gap-4">
-              <a href="/sitemap.xml" className="hover:text-slate-700">XML Sitemap</a>
-              <a href="/robots.txt" className="hover:text-slate-700">robots.txt</a>
+              {typeof window !== 'undefined' && window.location.hostname.endsWith('github.io')
+                  ? <span>Static preview — sitemap available after full-stack deployment</span>
+                  : <>
+                      <a href="/sitemap.xml" className="hover:text-slate-700">XML Sitemap</a>
+                      <a href="/robots.txt" className="hover:text-slate-700">robots.txt</a>
+                    </>}
             </div>
           </div>
         </div>
