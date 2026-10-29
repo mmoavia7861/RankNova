@@ -14,7 +14,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           <div className="space-y-3 md:col-span-1">
             <div className="flex items-center gap-2">
               <img
-                src="/assets/aistudio/RankNova_Growth_Analytics_Logo_037f0c19.png"
+                src={`${import.meta.env.BASE_URL}assets/aistudio/RankNova_Growth_Analytics_Logo_037f0c19.png`}
                 alt="RankNova"
                 className="h-8 w-auto object-contain"
               />
