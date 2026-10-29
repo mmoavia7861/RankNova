@@ -17,10 +17,10 @@ import { trackEvent } from '../../../lib/analytics';
 import { AdSlot } from '../../layout/AdSlot';
 
 export const MetaGeneratorTool: React.FC = () => {
-  const [keyword, setKeyword] = useState('enterprise seo platform');
-  const [topic, setTopic] = useState('All-in-one SEO audit and structured data platform for growth teams');
-  const [brand, setBrand] = useState('RankNova');
-  const [url, setUrl] = useState('https://ranknova.app/seo-tools');
+  const [keyword, setKeyword] = useState('');
+  const [topic, setTopic] = useState('');
+  const [brand, setBrand] = useState('');
+  const [url, setUrl] = useState('');
   const [intent, setIntent] = useState<'informational' | 'commercial' | 'transactional' | 'navigational'>('commercial');
 
   // Search Grounding toggle
@@ -60,9 +60,23 @@ export const MetaGeneratorTool: React.FC = () => {
   const titleChars = currentTitle.length;
   const titlePixels = estimateTitlePixelWidth(currentTitle);
   const descChars = currentDesc.length;
+  const isStaticPreview = typeof window !== 'undefined' && window.location.hostname.endsWith('.github.io');
+  const displayUrl = React.useMemo(() => {
+    try {
+      const parsed = new URL(url);
+      return ['http:', 'https:'].includes(parsed.protocol) ? parsed.origin : '';
+    } catch {
+      return '';
+    }
+  }, [url]);
+  const escapeHtml = (value: string): string => value.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const safeTitle = escapeHtml(currentTitle);
+  const safeDesc = escapeHtml(currentDesc);
+  const safeUrl = escapeHtml(displayUrl && url ? url : '');
 
   const handleFetchSearchGrounding = async () => {
-    if (!keyword.trim()) return;
+    if (!keyword.trim() || isStaticPreview) return;
     setGroundingLoading(true);
     setGroundingData(null);
 
@@ -91,6 +105,7 @@ export const MetaGeneratorTool: React.FC = () => {
   };
 
   const handleCopy = (text: string, type: string) => {
+    if (!keyword.trim()) return;
     navigator.clipboard.writeText(text);
     setCopiedType(type);
     trackEvent('meta_copied', { type });
@@ -98,23 +113,23 @@ export const MetaGeneratorTool: React.FC = () => {
   };
 
   const fullHtmlSnippet = `<!-- Primary Meta Tags -->
-<title>${currentTitle}</title>
-<meta name="title" content="${currentTitle}" />
-<meta name="description" content="${currentDesc}" />
-${url ? `<link rel="canonical" href="${url}" />` : ''}
+<title>${safeTitle}</title>
+<meta name="title" content="${safeTitle}" />
+<meta name="description" content="${safeDesc}" />
+${safeUrl ? `<link rel="canonical" href="${safeUrl}" />` : ''}
 
 <!-- Open Graph / Social Sharing -->
 <meta property="og:type" content="website" />
-${url ? `<meta property="og:url" content="${url}" />` : ''}
-<meta property="og:title" content="${currentTitle}" />
-<meta property="og:description" content="${currentDesc}" />
-<meta property="og:image" content="https://example.com/og-image.jpg" />
+${safeUrl ? `<meta property="og:url" content="${safeUrl}" />` : ''}
+<meta property="og:title" content="${safeTitle}" />
+<meta property="og:description" content="${safeDesc}" />
+<!-- Add an authentic Open Graph image URL for your site -->
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image" />
-${url ? `<meta name="twitter:url" content="${url}" />` : ''}
-<meta name="twitter:title" content="${currentTitle}" />
-<meta name="twitter:description" content="${currentDesc}" />`;
+${safeUrl ? `<meta name="twitter:url" content="${safeUrl}" />` : ''}
+<meta name="twitter:title" content="${safeTitle}" />
+<meta name="twitter:description" content="${safeDesc}" />`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -222,7 +237,7 @@ ${url ? `<meta name="twitter:url" content="${url}" />` : ''}
                 <button
                   type="button"
                   onClick={handleFetchSearchGrounding}
-                  disabled={groundingLoading}
+                  disabled={groundingLoading || isStaticPreview || !keyword.trim()}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {groundingLoading ? (
@@ -239,7 +254,7 @@ ${url ? `<meta name="twitter:url" content="${url}" />` : ''}
                 </button>
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
-                Uses Gemini 3.8 Flash with Google Search tool to analyze competitor snippets and search intent trends.
+                {isStaticPreview ? 'Live search grounding requires backend hosting; the Meta Generator works locally.' : 'Search-grounding availability depends on a configured server integration.'}
               </p>
             </div>
 
@@ -272,12 +287,12 @@ ${url ? `<meta name="twitter:url" content="${url}" />` : ''}
           {/* Title Suggestions List */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center justify-between pb-2 border-b border-slate-100">
-              <span>Suggested Title Tags (5 Styles)</span>
+              <span>{keyword.trim() ? 'Suggested Title Tags (5 Styles)' : 'Enter a keyword to generate suggestions'}</span>
               <span className="text-[10px] text-slate-500 font-normal">Click to apply</span>
             </h3>
 
             <div className="space-y-2">
-              {generatedResult.variants.map((v, i) => {
+              {(keyword.trim() ? generatedResult.variants : []).map((v, i) => {
                 const isSelected = currentTitle === v.title;
                 return (
                   <button
@@ -355,7 +370,7 @@ ${url ? `<meta name="twitter:url" content="${url}" />` : ''}
                     </div>
                     <span className="font-semibold text-[#202124]">{brand || 'Website'}</span>
                     <span className="text-[#5f6368] text-xs">
-                      {url ? new URL(url).origin.replace('https://', '') : 'example.com'}
+                      {displayUrl ? displayUrl.replace(/^https?:\/\//, '') : 'your-domain.com'}
                     </span>
                   </div>
 
@@ -379,7 +394,7 @@ ${url ? `<meta name="twitter:url" content="${url}" />` : ''}
                     <div>
                       <div className="text-[12px] font-semibold text-[#202124]">{brand || 'Website'}</div>
                       <div className="text-[11px] text-[#5f6368] truncate max-w-[240px]">
-                        {url ? new URL(url).origin : 'https://example.com'}
+                        {displayUrl || 'https://your-domain.com'}
                       </div>
                     </div>
                   </div>
@@ -464,6 +479,7 @@ ${url ? `<meta name="twitter:url" content="${url}" />` : ''}
 
               <button
                 onClick={() => handleCopy(fullHtmlSnippet, 'all_tags')}
+                disabled={!keyword.trim()}
                 className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
               >
                 {copiedType === 'all_tags' ? (
@@ -488,14 +504,15 @@ ${url ? `<meta name="twitter:url" content="${url}" />` : ''}
 
             <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={() => handleCopy(`<title>${currentTitle}</title>`, 'title_only')}
+                onClick={() => handleCopy(`<title>${safeTitle}</title>`, 'title_only')}
+                disabled={!keyword.trim()}
                 className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium border border-slate-200 cursor-pointer transition-colors"
               >
                 {copiedType === 'title_only' ? 'Copied Title!' : 'Copy Title Tag Only'}
               </button>
               <button
                 onClick={() =>
-                  handleCopy(`<meta name="description" content="${currentDesc}" />`, 'desc_only')
+                  handleCopy(`<meta name="description" content="${safeDesc}" />`, 'desc_only')
                 }
                 className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium border border-slate-200 cursor-pointer transition-colors"
               >
