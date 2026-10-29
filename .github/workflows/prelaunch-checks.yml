@@ -30,3 +30,24 @@ jobs:
         env:
           GITHUB_PAGES: 'true'
         run: npm run build
+      - name: Build Cloud Run production container
+        run: docker build --tag ranknova-api-smoke .
+      - name: Smoke-test running API, CORS and SSRF protection
+        run: |
+          docker run -d --name ranknova-smoke -p 8080:8080 -e CORS_ALLOWED_ORIGINS=https://mmoavia7861.github.io ranknova-api-smoke
+          trap 'docker logs ranknova-smoke || true; docker rm -f ranknova-smoke || true' EXIT
+          for i in $(seq 1 25); do
+            if curl --silent --fail http://127.0.0.1:8080/api/health > /tmp/health.json; then break; fi
+            sleep 2
+          done
+          grep -q '"status":"ok"' /tmp/health.json
+          curl --silent --fail -X OPTIONS http://127.0.0.1:8080/api/audit \
+            -H 'Origin: https://mmoavia7861.github.io' \
+            -H 'Access-Control-Request-Method: POST' -o /dev/null
+          CODE=$(curl --silent -o /tmp/rejected.json -w '%{http_code}' \
+            -X POST http://127.0.0.1:8080/api/audit \
+            -H 'Content-Type: application/json' \
+            -d '{"url":"http://127.0.0.1/"}')
+          test "$CODE" = "400"
+          grep -q 'error' /tmp/rejected.json
+

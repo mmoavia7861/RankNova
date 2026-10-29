@@ -15,6 +15,7 @@ import {
 import { generateMetaSuggestions, estimateTitlePixelWidth } from '../../../lib/meta/generator';
 import { trackEvent } from '../../../lib/analytics';
 import { AdSlot } from '../../layout/AdSlot';
+import { API_CONFIGURED, apiEndpoint } from '../../../lib/apiClient';
 
 export const MetaGeneratorTool: React.FC = () => {
   const [keyword, setKeyword] = useState('');
@@ -25,6 +26,7 @@ export const MetaGeneratorTool: React.FC = () => {
 
   // Search Grounding toggle
   const [groundingLoading, setGroundingLoading] = useState(false);
+  const [groundingError, setGroundingError] = useState('');
   const [groundingData, setGroundingData] = useState<{
     searchSummary: string;
     competitorHeadlines: string[];
@@ -60,7 +62,7 @@ export const MetaGeneratorTool: React.FC = () => {
   const titleChars = currentTitle.length;
   const titlePixels = estimateTitlePixelWidth(currentTitle);
   const descChars = currentDesc.length;
-  const isStaticPreview = typeof window !== 'undefined' && window.location.hostname.endsWith('.github.io');
+  const liveSearchUnavailable = !API_CONFIGURED;
   const displayUrl = React.useMemo(() => {
     try {
       const parsed = new URL(url);
@@ -76,18 +78,21 @@ export const MetaGeneratorTool: React.FC = () => {
   const safeUrl = escapeHtml(displayUrl && url ? url : '');
 
   const handleFetchSearchGrounding = async () => {
-    if (!keyword.trim() || isStaticPreview) return;
+    if (!keyword.trim() || liveSearchUnavailable) return;
+    setGroundingError('');
     setGroundingLoading(true);
     setGroundingData(null);
 
     try {
-      const response = await fetch('/api/search-grounding', {
+      const response = await fetch(apiEndpoint('/api/search-grounding'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ keyword, topic, brand })
       });
 
+      if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Search API returned unexpected content.');
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Search analysis is unavailable.');
       if (data.insights) {
         setGroundingData(data.insights);
         if (data.insights.suggestedTitles?.length > 0) {
@@ -96,9 +101,12 @@ export const MetaGeneratorTool: React.FC = () => {
         if (data.insights.suggestedDescriptions?.length > 0) {
           setSelectedDesc(data.insights.suggestedDescriptions[0]);
         }
+      } else {
+        setGroundingError('Live search analysis is not configured for this server. The local Meta Generator remains available.');
       }
     } catch (err) {
       console.warn('Grounding fetch failed:', err);
+      setGroundingError('Live search analysis is unavailable. You can still use the local Meta Tag Generator.');
     } finally {
       setGroundingLoading(false);
     }
@@ -237,7 +245,7 @@ ${safeUrl ? `<meta name="twitter:url" content="${safeUrl}" />` : ''}
                 <button
                   type="button"
                   onClick={handleFetchSearchGrounding}
-                  disabled={groundingLoading || isStaticPreview || !keyword.trim()}
+                  disabled={groundingLoading || liveSearchUnavailable || !keyword.trim()}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {groundingLoading ? (
@@ -254,10 +262,11 @@ ${safeUrl ? `<meta name="twitter:url" content="${safeUrl}" />` : ''}
                 </button>
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
-                {isStaticPreview ? 'Live search grounding requires backend hosting; the Meta Generator works locally.' : 'Search-grounding availability depends on a configured server integration.'}
+                {liveSearchUnavailable ? 'Optional search analysis requires the owner to connect the Cloud Run API. The Meta Generator works locally.' : 'Search analysis requires a configured server API and may be unavailable if its provider is not configured.'}
               </p>
             </div>
 
+            {groundingError && <p role="alert" className="text-xs text-rose-700 mt-2">{groundingError}</p>}
             {/* Live Search Grounding Insights */}
             {groundingData && (
               <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-3 text-xs">
