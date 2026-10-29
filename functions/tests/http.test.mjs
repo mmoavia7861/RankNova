@@ -22,13 +22,14 @@ async function withServer(run) {
     const address = server.address();
     await run(`http://127.0.0.1:${address.port}`);
   } finally {
+    server.closeAllConnections();
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
 }
 
 test('Firebase HTTP function responds with a real JSON health payload', async () => {
   await withServer(async base => {
-    const result = await fetch(base + '/api/health');
+    const result = await fetch(base + '/api/health', { signal: AbortSignal.timeout(5000) });
     assert.equal(result.status, 200);
     assert.equal((await result.json()).status, 'ok');
   });
@@ -38,6 +39,7 @@ test('Firebase HTTP function denies untrusted browser origins', async () => {
   await withServer(async base => {
     const result = await fetch(base + '/api/audit', {
       method: 'POST',
+      signal: AbortSignal.timeout(5000),
       headers: { 'Origin': 'https://attacker.invalid', 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: 'https://example.com' })
     });
