@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { ArrowLeft, Clock, Calendar, User, ExternalLink } from 'lucide-react';
-import { ARTICLES_DATA } from './GuidesPage';
+import { ARTICLES_DATA, GuideArticle } from './GuidesPage';
 import { AdSlot } from '../components/layout/AdSlot';
 
 interface GuideDetailPageProps {
@@ -158,9 +160,45 @@ const GUIDE_SECTIONS: Record<string, GuideSection[]> = {
 };
 
 export const GuideDetailPage: React.FC<GuideDetailPageProps> = ({ slug, onNavigate }) => {
-  const article = ARTICLES_DATA.find(a => a.slug === slug);
+  const [cmsArticle, setCmsArticle] = useState<(GuideArticle & { content: string }) | null>(null);
+  const [cmsLoaded, setCmsLoaded] = useState(false);
+  const builtInArticle = ARTICLES_DATA.find(a => a.slug === slug);
+  useEffect(() => {
+    let active = true;
+    setCmsLoaded(false);
+    setCmsArticle(null);
+    if (ARTICLES_DATA.some(a => a.slug === slug)) {
+      setCmsLoaded(true);
+      return;
+    }
+    getDocs(query(collection(db, 'articles'), where('published', '==', true)))
+      .then(snapshot => {
+        if (!active) return;
+        snapshot.forEach(item => {
+          const data = item.data();
+          if (data.slug !== slug || typeof data.content !== 'string') return;
+          setCmsArticle({
+            slug: data.slug,
+            title: data.title,
+            excerpt: data.excerpt || '',
+            category: data.category || 'SEO Guide',
+            readTime: 'Article',
+            publishedDate: typeof data.createdAt === 'string' ? data.createdAt.slice(0, 10) : '',
+            author: data.author || 'RankNova',
+            content: data.content
+          });
+        });
+      })
+      .catch(() => {})
+      .finally(() => { if (active) setCmsLoaded(true); });
+    return () => { active = false; };
+  }, [slug]);
+  const article = builtInArticle || cmsArticle;
   const sections = GUIDE_SECTIONS[slug];
-  if (!article || !sections) {
+  if (!article && !cmsLoaded) {
+    return <div className="max-w-3xl mx-auto p-12 text-slate-700" role="status">Loading article...</div>;
+  }
+  if (!article) {
     return <div className="max-w-3xl mx-auto px-4 py-20 text-center"><h1 className="text-2xl font-bold">Guide not found</h1><button onClick={() => onNavigate('/guides')} className="mt-4 text-blue-600 underline">Back to guides</button></div>;
   }
 
@@ -206,7 +244,7 @@ export const GuideDetailPage: React.FC<GuideDetailPageProps> = ({ slug, onNaviga
         <p className="text-base text-slate-800 font-medium leading-relaxed bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           {article.excerpt}
         </p>
-        {sections.map((section, index) => (
+        {sections?.map((section, index) => (
           <section key={section.heading} className="space-y-3">
             <h2 className="text-xl font-bold text-slate-900">{index + 1}. {section.heading}</h2>
             {section.paragraphs?.map(paragraph => (
@@ -219,6 +257,13 @@ export const GuideDetailPage: React.FC<GuideDetailPageProps> = ({ slug, onNaviga
             )}
           </section>
         ))}
+        {cmsArticle && !builtInArticle && (
+          <div className="prose max-w-none space-y-4">
+            {cmsArticle.content.trim().split(/\n\s*\n/).filter(Boolean).map((paragraph, index) => (
+              <p key={index} className="whitespace-pre-wrap">{paragraph}</p>
+            ))}
+          </div>
+        )}
         <aside className="p-5 rounded-2xl bg-blue-50 border border-blue-200 space-y-2">
           <h2 className="font-bold text-slate-900">Useful official references</h2>
           <p>Check the latest documentation when implementing SEO changes.</p>
