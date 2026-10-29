@@ -5,6 +5,8 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    // GitHub Pages serves this repo under /RankNova/, while Cloud Run serves it at /.
+    base: process.env.GITHUB_PAGES === 'true' ? '/RankNova/' : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
