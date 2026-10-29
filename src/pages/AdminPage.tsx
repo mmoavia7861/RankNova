@@ -45,13 +45,14 @@ interface FeedbackItem {
 export const AdminPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'articles' | 'settings' | 'feedback'>('overview');
   const [loading, setLoading] = useState(false);
+  const [dataError, setDataError] = useState('');
 
   // Settings State
   const [siteSettings, setSiteSettings] = useState({
     siteName: 'RankNova',
-    adSenseClientId: 'ca-pub-0000000000000000',
+    adSenseClientId: '',
     adsEnabled: false,
-    cmpEnabled: true,
+    cmpEnabled: false,
     toolsEnabled: {
       seoAudit: true,
       metaGenerator: true,
@@ -82,6 +83,7 @@ export const AdminPage: React.FC = () => {
 
   const loadAdminData = async () => {
     setLoading(true);
+    setDataError('');
     try {
       // 1. Fetch site settings
       const settingsDoc = await getDoc(doc(db, 'settings', 'config'));
@@ -106,6 +108,7 @@ export const AdminPage: React.FC = () => {
       setArticles(artList);
     } catch (err) {
       console.error('Failed to load admin data:', err);
+      setDataError('Admin data could not be loaded. Check Firebase configuration and deployed security rules. Counters may be incomplete.');
     } finally {
       setLoading(false);
     }
@@ -113,6 +116,7 @@ export const AdminPage: React.FC = () => {
 
   const handleSaveSettings = async () => {
     try {
+      setSettingsSaved(false);
       await setDoc(doc(db, 'settings', 'config'), {
         ...siteSettings,
         updatedAt: new Date().toISOString()
@@ -240,33 +244,34 @@ export const AdminPage: React.FC = () => {
       {/* OVERVIEW TAB */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          {dataError && <p role="alert" className="rounded-xl p-3 bg-rose-50 text-rose-800 border border-rose-200">{dataError}</p>}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
               <span className="text-xs text-slate-500 font-medium">Published Tools</span>
-              <div className="text-2xl font-bold text-slate-900">3 Active</div>
-              <span className="text-[11px] text-emerald-700 font-medium">Audit, Meta, Schema</span>
+              <div className="text-2xl font-bold text-slate-900">3 Listed</div>
+              <span className="text-[11px] text-slate-500 font-medium">Audit requires backend hosting</span>
             </div>
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
               <span className="text-xs text-slate-500 font-medium">Total Articles</span>
-              <div className="text-2xl font-bold text-slate-900">{articles.length + 4}</div>
-              <span className="text-[11px] text-blue-700 font-medium">Guides & Tutorials</span>
+              <div className="text-2xl font-bold text-slate-900">{dataError ? "—" : articles.length}</div>
+              <span className="text-[11px] text-blue-700 font-medium">CMS records (four separate built-in guides)</span>
             </div>
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
               <span className="text-xs text-slate-500 font-medium">Contact Submissions</span>
-              <div className="text-2xl font-bold text-slate-900">{feedbacks.length}</div>
+              <div className="text-2xl font-bold text-slate-900">{dataError ? "—" : feedbacks.length}</div>
               <span className="text-[11px] text-purple-700 font-medium">Stored in Firestore</span>
             </div>
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
               <span className="text-xs text-slate-500 font-medium">AdSense Readiness</span>
-              <div className="text-2xl font-bold text-emerald-700">Compliant</div>
-              <span className="text-[11px] text-slate-500 font-medium">CMP & Separation Active</span>
+              <div className="text-2xl font-bold text-amber-700">Not Verified</div>
+              <span className="text-[11px] text-slate-500 font-medium">Approval & consent setup pending</span>
             </div>
           </div>
 
           <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-3 text-xs text-slate-600 shadow-xs">
-            <h3 className="text-sm font-bold text-slate-900">Production Operational Status</h3>
+            <h3 className="text-sm font-bold text-slate-900">Deployment requirements (not a live monitor)</h3>
             <p className="leading-relaxed">
-              Express full-stack server running on Google Cloud Run with Vite middleware. Outbound audit requests are protected against SSRF via DNS A/AAAA resolution and IP validation.
+              The GitHub Pages preview hosts the React frontend only; it cannot run Express audit or search-grounding APIs. Before release, deploy the backend, check /api/health and verify the three tools. This is not a real-time status indicator.
             </p>
           </div>
         </div>
@@ -409,7 +414,7 @@ export const AdminPage: React.FC = () => {
             <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200">
               <div>
                 <strong className="text-slate-900 block font-bold">Enable Live Ad Slots</strong>
-                <span className="text-slate-600">Display publisher ads across tool result containers</span>
+                <span className="text-slate-600">Configuration only. This switch does not install or serve AdSense ads.</span>
               </div>
               <input
                 type="checkbox"
@@ -422,7 +427,7 @@ export const AdminPage: React.FC = () => {
             <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200">
               <div>
                 <strong className="text-slate-900 block font-bold">Google-Certified CMP (EEA/UK/CH)</strong>
-                <span className="text-slate-600">Enforce IAB TCF 2.2 consent modal for European visitors</span>
+                <span className="text-slate-600">Configuration only. A certified CMP still needs to be integrated and tested.</span>
               </div>
               <input
                 type="checkbox"
