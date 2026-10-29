@@ -15,7 +15,7 @@ import {
 import { generateMetaSuggestions, estimateTitlePixelWidth } from '../../../lib/meta/generator';
 import { trackEvent } from '../../../lib/analytics';
 import { AdSlot } from '../../layout/AdSlot';
-import { API_CONFIGURED, IS_GITHUB_PAGES, apiEndpoint } from '../../../lib/apiClient';
+import { API_CONFIGURED, apiEndpoint } from '../../../lib/apiClient';
 
 export const MetaGeneratorTool: React.FC = () => {
   const [keyword, setKeyword] = useState('');
@@ -62,7 +62,7 @@ export const MetaGeneratorTool: React.FC = () => {
   const titleChars = currentTitle.length;
   const titlePixels = estimateTitlePixelWidth(currentTitle);
   const descChars = currentDesc.length;
-  const liveSearchUnavailable = IS_GITHUB_PAGES && !API_CONFIGURED;
+  const liveSearchUnavailable = !API_CONFIGURED;
   const displayUrl = React.useMemo(() => {
     try {
       const parsed = new URL(url);
