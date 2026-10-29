@@ -10,10 +10,16 @@ export const ContactPage: React.FC = () => {
   const [subject, setSubject] = useState('Technical Feedback');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [website, setWebsite] = useState('');
   const [status, setStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (website.trim()) return; // Basic honeypot; backend abuse protection still required
+    if (name.trim().length > 120 || subject.trim().length > 160 || message.trim().length < 5 || message.length > 4096) {
+      setStatus({ type: 'error', text: 'Please enter a message of 5–4096 characters and check field lengths.' });
+      return;
+    }
     setLoading(true);
     setStatus(null);
 
@@ -29,7 +35,7 @@ export const ContactPage: React.FC = () => {
 
       setStatus({
         type: 'success',
-        text: 'Thank you! Your message has been received by our engineering team.'
+        text: 'Your message was saved successfully. We will review it; no automatic email confirmation is sent.'
       });
       setName('');
       setEmail('');
@@ -60,7 +66,7 @@ export const ContactPage: React.FC = () => {
           Contact the RankNova Team
         </h1>
         <p className="text-sm text-slate-600">
-          Have questions about audit results, need API integrations, or found a bug? Send us a message below.
+          Have questions or found a problem? This form stores your message in our contact database; it does not send an instant email.
         </p>
       </div>
 
@@ -83,6 +89,10 @@ export const ContactPage: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          <div className="absolute left-[-10000px]" aria-hidden="true">
+            <label htmlFor="contact-company-website">Leave this empty</label>
+            <input id="contact-company-website" tabIndex={-1} autoComplete="off" value={website} onChange={e => setWebsite(e.target.value)} />
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
@@ -90,6 +100,7 @@ export const ContactPage: React.FC = () => {
               </label>
               <input
                 type="text"
+                maxLength={120}
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Alex Morgan"
@@ -103,6 +114,7 @@ export const ContactPage: React.FC = () => {
               <input
                 type="email"
                 required
+                maxLength={256}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="alex@domain.com"
@@ -117,6 +129,7 @@ export const ContactPage: React.FC = () => {
             </label>
             <input
               type="text"
+              maxLength={160}
               value={subject}
               onChange={e => setSubject(e.target.value)}
               className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
@@ -130,6 +143,8 @@ export const ContactPage: React.FC = () => {
             <textarea
               required
               rows={5}
+              minLength={5}
+              maxLength={4096}
               value={message}
               onChange={e => setMessage(e.target.value)}
               placeholder="Describe your inquiry, feedback, or technical issue..."
