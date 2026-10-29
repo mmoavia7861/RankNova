@@ -42,6 +42,8 @@ export const SeoAuditTool: React.FC = () => {
   const [keepModalOpen, setKeepModalOpen] = useState(false);
   const [formsModalOpen, setFormsModalOpen] = useState(false);
 
+  const isStaticPreview = typeof window !== 'undefined' && window.location.hostname.endsWith('.github.io');
+
   const sampleUrls = [
     'https://example.com',
     'https://wikipedia.org',
@@ -50,6 +52,10 @@ export const SeoAuditTool: React.FC = () => {
 
   const handleRunAudit = async (urlToTest?: string) => {
     const target = (urlToTest || urlInput).trim();
+    if (isStaticPreview) {
+      setError('SEO Audit is unavailable on GitHub Pages because this feature needs a running Express backend. Use the live full-stack domain after deployment.');
+      return;
+    }
     if (!target) {
       setError('Please enter a website URL to audit.');
       return;
@@ -102,7 +108,7 @@ export const SeoAuditTool: React.FC = () => {
     if (!report) return;
     const summaryText = `RankNova SEO Audit: ${report.targetUrl}
 Score: ${report.score}/100 (Grade ${report.grade})
-Status: ${report.statusCode} OK • Response Time: ${report.fetchDurationMs}ms
+Status: ${report.statusCode} • Response Time: ${report.fetchDurationMs}ms
 Passed: ${report.summary.passed} | Warnings: ${report.summary.warnings} | Errors: ${report.summary.errors}
 
 Key Action Items:
@@ -166,6 +172,11 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {isStaticPreview && (
+        <div role="status" className="max-w-3xl mx-auto rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          This GitHub Pages site is a frontend preview. Website SEO Audit requires a deployed API server and cannot run here. We do not show invented audit scores.
+        </div>
+      )}
       {/* Tool Header */}
       <div className="text-center max-w-3xl mx-auto space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
@@ -204,7 +215,7 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
           </div>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || isStaticPreview}
             className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
           >
             {loading ? (
@@ -228,6 +239,7 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
             <button
               key={sample}
               type="button"
+              disabled={isStaticPreview}
               onClick={() => {
                 setUrlInput(sample);
                 handleRunAudit(sample);

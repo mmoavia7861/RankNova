@@ -35,7 +35,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold shadow-xs">
             <Sparkles className="w-4 h-4 text-blue-600" />
-            <span>High-Intent SEO Platform • Zero Paywalls</span>
+            <span>Free SEO tools • Transparent results</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tight leading-tight">
@@ -46,7 +46,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           </h1>
 
           <p className="max-w-2xl mx-auto text-base sm:text-lg text-slate-600 leading-relaxed">
-            Run instant on-page diagnostic audits, engineer high-CTR title and meta tags with real Google SERP simulation, and generate valid Schema.org structured data in seconds.
+            Generate metadata and structured data using your own inputs. Server-based SEO audits require a connected backend; preview results are estimates, not Google rankings.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -90,7 +90,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 Website SEO Audit Checker
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Server-side page crawler with OWASP-grade SSRF protection. Audits status codes, canonicals, robots tags, H1-H3 hierarchy, image alt coverage, Open Graph, and response timing.
+                Server-based checks for response codes, headings, canonical tags, robots directives and image accessibility. Requires backend deployment.
               </p>
               <ul className="text-xs text-slate-700 space-y-1.5 pt-2">
                 <li className="flex items-center gap-2">
@@ -103,7 +103,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Email report via Gmail & Keep notes</span>
+                  <span>Optional Google Workspace actions require permission and setup</span>
                 </li>
               </ul>
             </div>
@@ -128,7 +128,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 Meta Tag Generator & SERP Preview
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Engineer click-worthy title tags and meta descriptions. Includes accurate desktop & mobile Google snippet simulators, ~600px pixel width gauge, and live Google Search grounding.
+                Engineer click-worthy title tags and meta descriptions. Includes approximate desktop/mobile search snippet previews, title length guidance, and optional backend-powered search analysis.
               </p>
               <ul className="text-xs text-slate-700 space-y-1.5 pt-2">
                 <li className="flex items-center gap-2">
@@ -137,7 +137,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Exact desktop & mobile SERP preview</span>
+                  <span>Approximate desktop & mobile SERP preview</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -203,13 +203,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             <div className="space-y-4">
               <div className="inline-flex items-center gap-2 text-xs font-semibold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
                 <ShieldCheck className="w-4 h-4 text-blue-600" />
-                <span>Zero Slop • High-Assurance Architecture</span>
+                <span>Transparent results • Privacy-aware design</span>
               </div>
               <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
                 Engineered for Accuracy & Security
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Unlike bloated tools that fabricate estimates or sell your domains, RankNova operates on pure, transparent technical logic. Every outbound fetch undergoes strict DNS resolution, RFC1918 private network exclusion, and per-redirect IP validation.
+                RankNova separates browser-side generators from server-only website audits. An audit needs a properly deployed backend. We display actual responses rather than simulated health or traffic metrics.
               </p>
               <div className="grid grid-cols-2 gap-4 pt-2 text-xs">
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
@@ -223,22 +223,16 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               </div>
             </div>
 
-            <div className="bg-slate-900 text-slate-100 rounded-2xl p-6 font-mono text-xs space-y-3 shadow-md">
-              <div className="flex items-center justify-between text-slate-400 pb-2 border-b border-slate-800">
-                <span>security_guard.ts</span>
-                <span className="text-emerald-400 font-semibold">STATUS: ACTIVE</span>
-              </div>
-              <p className="text-slate-300">
-                [OK] Host resolved: public A/AAAA records verified
+            <div className="bg-slate-900 text-slate-100 rounded-2xl p-6 text-xs space-y-4 shadow-md">
+              <h4 className="text-sm font-bold text-white">How RankNova works</h4>
+              <p className="text-slate-300 leading-relaxed">
+                Meta tags and Schema JSON-LD are generated in your browser from information you enter. No rankings, traffic figures, or audit scores are invented.
               </p>
-              <p className="text-slate-300">
-                [OK] Private range check: RFC1918 / loopback rejected
+              <p className="text-slate-300 leading-relaxed">
+                The Website SEO Audit uses a separate secure server. It is not available on the GitHub Pages frontend-only preview.
               </p>
-              <p className="text-slate-300">
-                [OK] Redirect guard: each destination inspected
-              </p>
-              <p className="text-emerald-400 font-semibold">
-                [200 OK] Safe outbound fetch completed in 240ms
+              <p className="text-slate-400 border-t border-slate-700 pt-3">
+                Analysis results and technical availability are shown only after an actual request. No simulated green status indicators.
               </p>
             </div>
           </div>

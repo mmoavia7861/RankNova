@@ -18,7 +18,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
           Transparent, Browser-First SEO Utilities
         </h1>
         <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
-          RankNova was founded on a simple premise: professional website diagnostics and structured data engineering should be fast, transparent, and accessible without recurring subscription fees or fake algorithmic ratings.
+          RankNova is an independent collection of SEO utilities. Our goal is to make page metadata and structured data easier to understand, while showing honest limitations for tools that require a separate server.
         </p>
       </div>
 
@@ -32,7 +32,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
               <span>OWASP-Grade SSRF Defense</span>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Outbound diagnostic requests validate every destination, resolving DNS A/AAAA records to block RFC1918 private ranges, internal networks, and cloud metadata endpoints.
+              When the audit backend is deployed, URL fetching uses defensive validation against private or internal destinations. The static GitHub Pages preview cannot perform live audits.
             </p>
           </div>
 
@@ -49,12 +49,12 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
 
         <h2 className="text-lg font-bold text-slate-900 pt-4">Data Privacy & Google Workspace</h2>
         <p>
-          When you connect Google Workspace (Gmail or Google Forms), RankNova handles OAuth access tokens exclusively in volatile browser memory. We never store your emails, form responses, or Google credentials on persistent servers. All Workspace mutations require explicit user confirmation before execution.
+          Optional Google Workspace features request permissions through Google's sign-in flow. Review the requested access carefully. These integrations require a properly configured Google project and supported services.
         </p>
 
-        <h2 className="text-lg font-bold text-slate-900 pt-4">Contact & Physical Presence</h2>
+        <h2 className="text-lg font-bold text-slate-900 pt-4">Contact & Support</h2>
         <p>
-          RankNova is developed and maintained by our technical engineering team. For partnerships, bug reports, or enterprise inquiries, reach out through our{' '}
+          For feedback, bug reports, or questions about the available tools, contact us through our{' '}
           <button onClick={() => onNavigate('/contact')} className="text-blue-600 hover:underline font-semibold cursor-pointer">
             Contact page
           </button>.

@@ -14,11 +14,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Strict owner-only policy: an arbitrary /admins document cannot grant privileges.
     function isAdmin() {
-      return isSignedIn() && (
-        (request.auth.token.email == 'moaviah760@gmail.com' && request.auth.token.email_verified == true) ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
+      return isSignedIn() &&
+        request.auth.token.email == 'moaviah760@gmail.com' &&
+        request.auth.token.email_verified == true;
     }
 
     function isValidId(id) {
@@ -45,12 +45,36 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // User Feedback and Inquiries
+    // User Feedback and Inquiries (client writes remain spam-sensitive; protect with App Check before launch)
     match /feedback/{feedbackId} {
-      allow create: if request.resource.data.email is string &&
-        request.resource.data.email.size() <= 256 &&
-        request.resource.data.message is string &&
-        request.resource.data.message.size() <= 4096;
+      allow create: if request.resource.data.keys().hasOnly(['name', 'email', 'subject', 'message', 'createdAt']) &&
+        request.resource.data.name is string && request.resource.data.name.size() <= 120 &&
+        request.resource.data.email is string && request.resource.data.email.size() <= 256 &&
+        request.resource.data.email.matches('.*@.*[.].*') &&
+        request.resource.data.subject is string && request.resource.data.subject.size() <= 160 &&
+        request.resource.data.message is string && request.resource.data.message.size() >= 5 &&
+        request.resource.data.message.size() <= 4096 &&
+        request.resource.data.createdAt is string && request.resource.data.createdAt.size() <= 40;
+      allow read, list, update, delete: if isAdmin();
+    }
+
+    // Site settings & tool configurations
+    match /settings/{settingId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Admin identities
+    match /admins/{adminId} {
+      allow get, list, write: if false;
+    }
+  }
+}
+) &&
+        request.resource.data.subject is string && request.resource.data.subject.size() <= 160 &&
+        request.resource.data.message is string && request.resource.data.message.size() >= 5 &&
+        request.resource.data.message.size() <= 4096 &&
+        request.resource.data.createdAt is string && request.resource.data.createdAt.size() <= 40;
       allow read, list, update, delete: if isAdmin();
     }
 

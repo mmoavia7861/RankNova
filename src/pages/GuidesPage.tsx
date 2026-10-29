@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { BookOpen, Clock, ArrowRight, Sparkles } from 'lucide-react';
 import { AdSlot } from '../components/layout/AdSlot';
 
@@ -56,6 +58,35 @@ export const ARTICLES_DATA: GuideArticle[] = [
 ];
 
 export const GuidesPage: React.FC<GuidesPageProps> = ({ onNavigate }) => {
+  const [cmsArticles, setCmsArticles] = useState<GuideArticle[]>([]);
+  const [cmsError, setCmsError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getDocs(query(collection(db, 'articles'), where('published', '==', true)))
+      .then(snapshot => {
+        if (!active) return;
+        const rows: GuideArticle[] = [];
+        snapshot.forEach(item => {
+          const data = item.data();
+          if (typeof data.slug !== 'string' || !data.slug || typeof data.title !== 'string') return;
+          rows.push({
+            slug: data.slug,
+            title: data.title,
+            excerpt: typeof data.excerpt === 'string' ? data.excerpt : '',
+            category: typeof data.category === 'string' ? data.category : 'SEO Guide',
+            readTime: 'Article',
+            publishedDate: typeof data.createdAt === 'string' ? data.createdAt.slice(0, 10) : '',
+            author: typeof data.author === 'string' ? data.author : 'RankNova'
+          });
+        });
+        setCmsArticles(rows);
+      })
+      .catch(() => { if (active) setCmsError(true); });
+    return () => { active = false; };
+  }, []);
+
+  const allArticles = [...ARTICLES_DATA, ...cmsArticles.filter(article => !ARTICLES_DATA.some(builtIn => builtIn.slug === article.slug))];
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
       <div className="text-center max-w-3xl mx-auto space-y-3">
@@ -72,7 +103,7 @@ export const GuidesPage: React.FC<GuidesPageProps> = ({ onNavigate }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {ARTICLES_DATA.map((article) => (
+        {allArticles.map((article) => (
           <div
             key={article.slug}
             onClick={() => onNavigate(`/guides/${article.slug}`)}
@@ -107,6 +138,12 @@ export const GuidesPage: React.FC<GuidesPageProps> = ({ onNavigate }) => {
           </div>
         ))}
       </div>
+
+      {cmsError && (
+        <p role="status" className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
+          Published CMS articles could not be loaded. The built-in guides are still available.
+        </p>
+      )}
 
       {/* Ad slot */}
       <AdSlot slotId="guides-hub-bottom" />

@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { ArrowLeft, Clock, Calendar, User, ExternalLink } from 'lucide-react';
-import { ARTICLES_DATA } from './GuidesPage';
+import { ARTICLES_DATA, GuideArticle } from './GuidesPage';
 import { AdSlot } from '../components/layout/AdSlot';
 
 interface GuideDetailPageProps {
@@ -8,8 +10,197 @@ interface GuideDetailPageProps {
   onNavigate: (path: string) => void;
 }
 
+
+interface GuideSection {
+  heading: string;
+  paragraphs?: string[];
+  bullets?: string[];
+}
+
+// Each guide contains independently written, topic-specific educational content.
+const GUIDE_SECTIONS: Record<string, GuideSection[]> = {
+  "title-tag-optimization-guide": [
+    {
+      "heading": "What a title tag does",
+      "paragraphs": [
+        "The title element describes the subject of a webpage. Search engines may use it as the clickable headline of a result, but they can also generate a different title from visible headings, anchor text or page content.",
+        "Write for the reader first: explain the page accurately, distinguish it from other pages on your site, and avoid repeating the same keyword several times."
+      ]
+    },
+    {
+      "heading": "Length and display space",
+      "paragraphs": [
+        "Google does not prescribe a fixed number of characters for every title. A short title can still be replaced or truncated, and a long title can appear differently on mobile and desktop.",
+        "Our preview uses a rough pixel-width estimate. It is a design aid, not a guarantee that Google will show the same headline."
+      ],
+      "bullets": [
+        "Make the most important information understandable near the beginning.",
+        "Write a distinct title for each indexable page.",
+        "Avoid adding a year unless the page really is maintained for that year.",
+        "Check mobile readability, then inspect actual Search Console performance once indexed."
+      ]
+    },
+    {
+      "heading": "Example and testing",
+      "paragraphs": [
+        "For a product page, a descriptive title such as 'Women's Trail Running Shoes | Brand' communicates the category and owner. A vague title such as 'Home | Brand' does not explain the page.",
+        "Review your title together with the H1, meta description and on-page content. Google Search Console can show impressions and clicks; use those observations when refining titles rather than expecting a specific click-through rate."
+      ]
+    },
+    {
+      "heading": "Practical checklist",
+      "bullets": [
+        "Use only the topic that genuinely matches the page.",
+        "Keep brand names accurate and concise.",
+        "Verify the live document has one meaningful title element.",
+        "Do not mistake the RankNova preview for an actual search ranking."
+      ]
+    }
+  ],
+  "schema-json-ld-mastery": [
+    {
+      "heading": "What JSON-LD is",
+      "paragraphs": [
+        "JSON-LD is a script-based format for expressing structured data. It can describe an article, product, local business or breadcrumb trail using Schema.org vocabulary.",
+        "Structured data helps machines understand eligible page information, but Google decides whether any special search appearance is shown. Valid JSON alone does not guarantee rich results."
+      ]
+    },
+    {
+      "heading": "Choose the correct type",
+      "bullets": [
+        "Article: use real headline, author and publication details for editorial content.",
+        "Product: use authentic product information and offers. Never invent prices, reviews or star ratings.",
+        "LocalBusiness: use verifiable business address, website and contact details.",
+        "BreadcrumbList: list only the visible navigation hierarchy with correct URLs."
+      ]
+    },
+    {
+      "heading": "Build and validate",
+      "paragraphs": [
+        "Start with one page that has a clear purpose. In RankNova, select the schema type, enter your real values, and examine the generated script before copying it into the page HTML.",
+        "Run the published URL or markup through Google's Rich Results Test. The test checks Google-supported rich-result requirements; Schema.org validation can provide another perspective on syntax and vocabulary."
+      ]
+    },
+    {
+      "heading": "Common errors to avoid",
+      "bullets": [
+        "Adding review ratings that were never collected.",
+        "Marking up content users cannot see on the page.",
+        "Using fictional business addresses or placeholder example.com URLs.",
+        "Copying a script without checking required fields and the final live page."
+      ]
+    }
+  ],
+  "technical-seo-audit-checklist": [
+    {
+      "heading": "Start with access and indexability",
+      "paragraphs": [
+        "Visit the live URL with a browser, then inspect the HTTP status code. A broken page, incorrect redirect or blocked document can prevent a search engine from discovering or indexing the intended content.",
+        "Examine robots.txt, robots meta directives and the canonical URL separately. A canonical is a preference signal, not an unconditional instruction."
+      ]
+    },
+    {
+      "heading": "Review on-page structure",
+      "bullets": [
+        "Give the page one descriptive title element and a useful meta description.",
+        "Write an H1 that describes the primary page topic; keep subsequent headings logical.",
+        "Add helpful alt text for images that convey meaning, and use empty alt for purely decorative ones.",
+        "Link to important pages using understandable anchor text.",
+        "Check structured data against actual page content."
+      ]
+    },
+    {
+      "heading": "Check mobile and page experience",
+      "paragraphs": [
+        "Make sure the layout is readable on smaller screens and navigation can be used without precision tapping. Verify there is a responsive viewport tag and that content does not overflow.",
+        "Core Web Vitals require field or lab measurements; a single HTML fetch cannot measure real-user LCP, INP and CLS. Consult PageSpeed Insights or Search Console rather than treating a custom audit score as a Google performance score."
+      ]
+    },
+    {
+      "heading": "Understand what RankNova tests",
+      "paragraphs": [
+        "RankNova's server-side audit checks selected visible HTML and response attributes using documented rules. It is not a site-wide crawl, backlink analysis or ranking prediction.",
+        "On GitHub Pages only the static frontend is hosted. The audit requires a separate running backend and should not be described as available until that service is deployed and tested."
+      ]
+    }
+  ],
+  "meta-description-best-practices": [
+    {
+      "heading": "The role of meta descriptions",
+      "paragraphs": [
+        "A meta description is a suggested summary of the page. Search engines may choose this text for a search result, or extract a different snippet from the page to suit a particular query.",
+        "A relevant description can help a reader decide whether to click. It is not a direct guarantee of improved ranking or click-through rate."
+      ]
+    },
+    {
+      "heading": "Write a clear and honest summary",
+      "bullets": [
+        "Explain what the user will find or accomplish on the page.",
+        "Use the main topic naturally, without keyword lists.",
+        "Avoid made-up promises such as guaranteed rank improvements.",
+        "Keep descriptions different for pages serving different needs.",
+        "When appropriate, include a straightforward next action."
+      ]
+    },
+    {
+      "heading": "Length is an approximation",
+      "paragraphs": [
+        "There is no single permanent character limit that guarantees full display. Screen width, search features, the search query and Google's selected snippet all affect the result.",
+        "Aim for a concise, informative description and use the RankNova preview only as an approximation. A description that is slightly longer may be more useful than a shorter one that omits important context."
+      ]
+    },
+    {
+      "heading": "Measure and iterate",
+      "paragraphs": [
+        "Use Google Search Console to compare queries and pages before making changes. Review the actual rendered snippet in search, not just what the HTML tag contains.",
+        "If a page receives impressions but few clicks, investigate its search intent, title, snippet and competing results together. Avoid attributing all changes in traffic to one metadata edit."
+      ]
+    }
+  ]
+};
+
 export const GuideDetailPage: React.FC<GuideDetailPageProps> = ({ slug, onNavigate }) => {
-  const article = ARTICLES_DATA.find(a => a.slug === slug) || ARTICLES_DATA[0];
+  const [cmsArticle, setCmsArticle] = useState<(GuideArticle & { content: string }) | null>(null);
+  const [cmsLoaded, setCmsLoaded] = useState(false);
+  const builtInArticle = ARTICLES_DATA.find(a => a.slug === slug);
+  useEffect(() => {
+    let active = true;
+    setCmsLoaded(false);
+    setCmsArticle(null);
+    if (ARTICLES_DATA.some(a => a.slug === slug)) {
+      setCmsLoaded(true);
+      return;
+    }
+    getDocs(query(collection(db, 'articles'), where('published', '==', true)))
+      .then(snapshot => {
+        if (!active) return;
+        snapshot.forEach(item => {
+          const data = item.data();
+          if (data.slug !== slug || typeof data.content !== 'string') return;
+          setCmsArticle({
+            slug: data.slug,
+            title: data.title,
+            excerpt: data.excerpt || '',
+            category: data.category || 'SEO Guide',
+            readTime: 'Article',
+            publishedDate: typeof data.createdAt === 'string' ? data.createdAt.slice(0, 10) : '',
+            author: data.author || 'RankNova',
+            content: data.content
+          });
+        });
+      })
+      .catch(() => {})
+      .finally(() => { if (active) setCmsLoaded(true); });
+    return () => { active = false; };
+  }, [slug]);
+  const article = builtInArticle || cmsArticle;
+  const sections = GUIDE_SECTIONS[slug];
+  if (!article && !cmsLoaded) {
+    return <div className="max-w-3xl mx-auto p-12 text-slate-700" role="status">Loading article...</div>;
+  }
+  if (!article) {
+    return <div className="max-w-3xl mx-auto px-4 py-20 text-center"><h1 className="text-2xl font-bold">Guide not found</h1><button onClick={() => onNavigate('/guides')} className="mt-4 text-blue-600 underline">Back to guides</button></div>;
+  }
 
   return (
     <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -48,94 +239,44 @@ export const GuideDetailPage: React.FC<GuideDetailPageProps> = ({ slug, onNaviga
         </div>
       </header>
 
-      {/* Article Body */}
-      <div className="max-w-none text-slate-700 text-sm leading-relaxed space-y-6">
+      {/* Topic-specific article content; no generic duplicate body reused across guides. */}
+      <div className="max-w-none text-slate-700 text-sm leading-relaxed space-y-7">
         <p className="text-base text-slate-800 font-medium leading-relaxed bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           {article.excerpt}
         </p>
-
-        <h2 className="text-xl font-bold text-slate-900 pt-4">1. Understanding Modern Search Engine Behavior</h2>
-        <p>
-          Google Search Central guidelines consistently emphasize that technical metadata exists to assist automated crawlers in understanding document relevance and structural relationships. In contemporary search architecture, simplistic keyword stuffing or rigid character counting is insufficient.
-        </p>
-
-        <div className="p-5 rounded-2xl bg-blue-50/80 border border-blue-200 text-slate-700 text-xs space-y-2">
-          <strong className="block text-sm font-bold text-blue-900">Google Search Central Insight</strong>
-          <p className="leading-relaxed">
-            Google does not enforce a hard limit on title tag length or meta description length. Snippets are truncated dynamically by rendered pixel width (approximately 600px on desktop and varying widths on mobile viewports). Furthermore, search algorithms dynamically extract text snippets from page content when the provided meta description does not directly match user search queries.
-          </p>
-        </div>
-
-        <h2 className="text-xl font-bold text-slate-900 pt-4">2. Core Implementation Strategy</h2>
-        <p>
-          To maintain high click-through rates (CTR) and prevent awkward truncation in search snippets, adhere to the following best practices:
-        </p>
-        <ul className="list-disc pl-5 space-y-2 text-slate-700">
-          <li>
-            <strong>Front-load target keywords:</strong> Place primary search terms within the first 35 characters to guarantee visibility across all device screens.
-          </li>
-          <li>
-            <strong>Calculate pixel budgets:</strong> Wider capital characters (such as W, M, O) consume more pixel width than narrow letters (such as i, l, t). Keep total pixel width under ~580px.
-          </li>
-          <li>
-            <strong>Include branded suffixes consistently:</strong> Append your organization name (e.g. <code>| Brand</code>) to reinforce brand recognition and credibility.
-          </li>
-          <li>
-            <strong>Align with search intent:</strong> Ensure the promised value in the headline is immediately answered within the first paragraph and H1 heading of the page.
-          </li>
-        </ul>
-
-        <h2 className="text-xl font-bold text-slate-900 pt-4">3. Recommended HTML Structure</h2>
-        <div className="relative">
-          <pre className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-xs font-mono text-emerald-300 overflow-x-auto shadow-md">
-            <code>{`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <!-- Primary Search Metadata -->
-    <title>Primary Keyword - Action Benefit | Brand Name</title>
-    <meta name="description" content="Engaging 130-155 character description summarizing key page solutions with clear call to action." />
-    <link rel="canonical" href="https://example.com/canonical-page" />
-    
-    <!-- Open Graph for Social Networks -->
-    <meta property="og:type" content="article" />
-    <meta property="og:title" content="Primary Keyword - Action Benefit | Brand Name" />
-    <meta property="og:description" content="Engaging description for social previews." />
-    <meta property="og:image" content="https://example.com/share-image.jpg" />
-  </head>
-  <body>
-    <h1>Primary Keyword - Main Subject</h1>
-    <!-- Page Content -->
-  </body>
-</html>`}</code>
-          </pre>
-        </div>
-
-        <h2 className="text-xl font-bold text-slate-900 pt-4">4. Verification & Testing Tools</h2>
-        <p>
-          Always verify your implementations using real diagnostic checkers rather than manual guessing. You can use RankNova’s built-in tools:
-        </p>
+        {sections?.map((section, index) => (
+          <section key={section.heading} className="space-y-3">
+            <h2 className="text-xl font-bold text-slate-900">{index + 1}. {section.heading}</h2>
+            {section.paragraphs?.map(paragraph => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
+            {section.bullets && (
+              <ul className="list-disc pl-5 space-y-2">
+                {section.bullets.map(item => <li key={item}>{item}</li>)}
+              </ul>
+            )}
+          </section>
+        ))}
+        {cmsArticle && !builtInArticle && (
+          <div className="prose max-w-none space-y-4">
+            {cmsArticle.content.trim().split(/\n\s*\n/).filter(Boolean).map((paragraph, index) => (
+              <p key={index} className="whitespace-pre-wrap">{paragraph}</p>
+            ))}
+          </div>
+        )}
+        <aside className="p-5 rounded-2xl bg-blue-50 border border-blue-200 space-y-2">
+          <h2 className="font-bold text-slate-900">Useful official references</h2>
+          <p>Check the latest documentation when implementing SEO changes.</p>
+          <a className="text-blue-700 font-semibold underline block" href="https://developers.google.com/search/docs" target="_blank" rel="noopener noreferrer">
+            Google Search Central documentation <ExternalLink className="w-3.5 h-3.5 inline" />
+          </a>
+          <a className="text-blue-700 font-semibold underline block" href="https://search.google.com/test/rich-results" target="_blank" rel="noopener noreferrer">
+            Google Rich Results Test <ExternalLink className="w-3.5 h-3.5 inline" />
+          </a>
+        </aside>
         <div className="flex flex-wrap gap-3 pt-2">
-          <button
-            onClick={() => onNavigate('/tools/seo-audit')}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-          >
-            Run Website Audit
-          </button>
-          <button
-            onClick={() => onNavigate('/tools/meta-tag-generator')}
-            className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-300 shadow-xs transition-colors cursor-pointer"
-          >
-            Launch SERP Simulator
-          </button>
-          <button
-            onClick={() => onNavigate('/tools/schema-generator')}
-            className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-300 shadow-xs transition-colors cursor-pointer"
-          >
-            Generate JSON-LD Schema
-          </button>
+          <button onClick={() => onNavigate('/tools/meta-tag-generator')} className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold">Try Meta Tag Generator</button>
+          <button onClick={() => onNavigate('/tools/schema-generator')} className="px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 font-semibold">Try Schema Generator</button>
         </div>
       </div>
 

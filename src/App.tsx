@@ -13,9 +13,8 @@ import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsPage } from './pages/TermsPage';
 import { DisclaimerPage } from './pages/DisclaimerPage';
 import { AdminPage } from './pages/AdminPage';
-import { auth, db } from './lib/firebase';
+import { auth } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDocFromServer } from 'firebase/firestore';
 import { trackEvent } from './lib/analytics';
 
 // For project-hosted GitHub Pages, strip the /RankNova prefix when matching routes.
@@ -54,19 +53,8 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Validate connection to Firestore on boot (Mandatory Firebase Skill requirement)
-  useEffect(() => {
-    async function testConnection() {
-      try {
-        await getDocFromServer(doc(db, 'test', 'connection'));
-      } catch (error) {
-        if (error instanceof Error && error.message.includes('the client is offline')) {
-          console.error('Please check your Firebase configuration.');
-        }
-      }
-    }
-    testConnection();
-  }, []);
+  // Firestore is accessed only by features that need it.
+  // No unauthenticated startup request to a deliberately denied test document.
 
   const navigate = (path: string) => {
     if (path !== currentPath) {

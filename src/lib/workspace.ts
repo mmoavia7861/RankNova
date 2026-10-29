@@ -8,6 +8,14 @@ export const WORKSPACE_SCOPES = [
   'https://www.googleapis.com/auth/forms.responses.readonly'
 ];
 
+// Browser-safe Base64 (Vite does not guarantee Node's Buffer global).
+function toBase64Utf8(input: string): string {
+  const bytes = new TextEncoder().encode(input);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 let cachedAccessToken: string | null = null;
 let isSigningIn = false;
 
@@ -68,17 +76,16 @@ export async function sendAuditEmailViaGmail(params: {
     const emailLines = [
       `From: ${fromUser}`,
       `To: ${params.toEmail}`,
-      `Subject: =?utf-8?B?${Buffer.from(params.subject).toString('base64')}?=`,
+      `Subject: =?utf-8?B?${toBase64Utf8(params.subject)}?=`,
       'MIME-Version: 1.0',
       'Content-Type: text/html; charset=utf-8',
       'Content-Transfer-Encoding: base64',
       '',
-      Buffer.from(params.htmlContent).toString('base64')
+      toBase64Utf8(params.htmlContent)
     ];
 
     const rawMessage = emailLines.join('\r\n');
-    const encodedMessage = Buffer.from(rawMessage)
-      .toString('base64')
+    const encodedMessage = toBase64Utf8(rawMessage)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
