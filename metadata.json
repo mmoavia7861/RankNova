@@ -1,0 +1,6 @@
+{
+  "name": "RankNova - SEO Growth & Audit Platform",
+  "description": "Production-ready SEO suite featuring Website SEO Audit Checker, Meta Tag Generator with SERP Preview, Schema JSON-LD Generator, and Google Workspace integrations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

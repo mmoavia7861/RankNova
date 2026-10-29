@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "Audit": {
+      "title": "Audit",
+      "description": "User saved website SEO audit report",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "url": { "type": "string", "maxLength": 1024 },
+        "score": { "type": "number" },
+        "passedCount": { "type": "number" },
+        "warningsCount": { "type": "number" },
+        "errorsCount": { "type": "number" },
+        "title": { "type": "string", "maxLength": 512 },
+        "metaDescription": { "type": "string", "maxLength": 1024 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "url", "score", "passedCount", "warningsCount", "errorsCount", "createdAt"]
+    },
+    "Article": {
+      "title": "Article",
+      "description": "SEO guide and educational article published by admin",
+      "type": "object",
+      "properties": {
+        "slug": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 256 },
+        "excerpt": { "type": "string", "maxLength": 512 },
+        "content": { "type": "string", "maxLength": 30000 },
+        "category": { "type": "string", "maxLength": 64 },
+        "author": { "type": "string", "maxLength": 128 },
+        "published": { "type": "boolean" },
+        "readTime": { "type": "string", "maxLength": 32 },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["slug", "title", "excerpt", "content", "published", "createdAt"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "User feedback or contact message",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "subject": { "type": "string", "maxLength": 256 },
+        "message": { "type": "string", "maxLength": 4096 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "message", "createdAt"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global settings for ad-slots, CMP, and tool availability",
+      "type": "object",
+      "properties": {
+        "siteName": { "type": "string", "maxLength": 128 },
+        "toolsEnabled": { "type": "object" },
+        "adSenseClientId": { "type": "string", "maxLength": 128 },
+        "adsEnabled": { "type": "boolean" },
+        "cmpEnabled": { "type": "boolean" },
+        "ga4MeasurementId": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["siteName", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/audits/{auditId}": {
+      "schema": "Audit",
+      "description": "User saved audits"
+    },
+    "/articles/{articleId}": {
+      "schema": "Article",
+      "description": "SEO educational guides and articles"
+    },
+    "/feedback/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "Contact submissions and bug reports"
+    },
+    "/settings/config": {
+      "schema": "SiteSettings",
+      "description": "Site configurations and ad slots"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "entities/Admin" },
+      "description": "Admin identity whitelist"
+    }
+  }
+}

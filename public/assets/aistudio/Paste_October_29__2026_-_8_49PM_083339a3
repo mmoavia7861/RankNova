@@ -1,0 +1,448 @@
+# Production-Ready SEO Tools Website in Google AI Studio
+
+## Executive summary
+
+The strongest MVP is a **focused SEO utility platform with exactly three public tools**: **Website SEO Audit Checker**, **Meta Tag Generator + SERP Preview**, and **Schema (JSON-LD) Markup Generator**. This is a coherent product loop: users diagnose a page, fix its metadata, and add structured data. It also avoids the high recurring data costs of rank tracking, backlink intelligence, and keyword-volume databases at launch.
+
+There is credible demand for this category. SmallSEOTools exposes a large catalog that includes a Website SEO Score Checker and Meta Tag Generator, while Seobility offers an SEO Checker, SERP Snippet Generator, and other free SEO utilities. Semrush estimated **11.07 million visits to smallseotools.com** and **2.02 million visits to seobility.net** in September 2026; those figures are third-party estimates, not first-party analytics, but they demonstrate that free SEO utilities can attract meaningful audiences. citeturn226107search0turn226107search3turn226107search7turn226107search8
+
+The product should be built **browser-first where possible and server-side only where necessary**. The Meta/Preview and Schema tools can run almost entirely in the browser. The SEO Audit Checker must use a server endpoint because it needs to fetch arbitrary public websites; that endpoint is the highest-risk part of the application because it can become an SSRF vector if it is not carefully isolated and validated. OWASP specifically recommends validating destination URLs/IPs, blocking internal networks, controlling redirects, and using defense in depth for user-controlled outbound requests. citeturn810390search0turn810390search2
+
+Google AI Studio is suitable for the first production implementation because its current Build mode supports a React front end, Node.js server runtime, npm packages, secrets, Firebase Authentication/Firestore integration, GitHub synchronization, and direct Cloud Run deployment. citeturn803372search0turn803372search1turn803372search2
+
+The recommended launch architecture is **React + TypeScript + Node.js on Cloud Run**, Firebase Auth/Firestore for the private admin/CMS, and prerendered or server-rendered public SEO pages. Google can render JavaScript, but Google Search Central still recommends server-side or pre-rendering because it improves access for users and crawlers and avoids making essential content dependent on rendering. citeturn803372search3turn803372search4
+
+The budget is **unspecified**. Therefore, the architecture below minimizes recurring API and hosting costs and treats all paid SEO-data providers as optional extensions rather than MVP dependencies.
+
+## Market opportunity and product scope
+
+The opportunity is not “build another Semrush.” The realistic opportunity is **high-intent free tools with fast answers**, then use those utilities to earn organic traffic, build an email/blog audience if desired, and monetize with AdSense after the site has substantive content and sufficient user value.
+
+SmallSEOTools currently lists website SEO checking, meta-tag tools, sitemaps, Open Graph tools, redirect checkers and many other utilities. Seobility explicitly offers a free SEO Checker that analyzes technical/on-page issues and limits free use to five checks per day, while its paid product adds whole-site audits, rank monitoring and backlink analysis. Ahrefs similarly uses free audit capability as an entry point into a broader paid ecosystem. citeturn226107search0turn226107search3turn226107search5turn226107search6
+
+Semrush also operates a free SEO Checker and a SERP Simulator, which supports the same basic product pattern: free diagnostic/generator tools can serve as top-of-funnel utilities even when deeper SEO intelligence is commercial. citeturn193468search1turn193468search5
+
+Search-volume data should be treated cautiously. Semrush itself states that its monthly keyword volumes are estimates based on models, third-party data and clickstream information rather than exact Google counts. For a worldwide English-first launch, validate target phrases such as `website seo checker`, `seo audit checker`, `meta tag generator`, `serp preview`, `schema markup generator`, and long-tail variants inside Google Keyword Planner, Google Trends and/or Semrush before writing landing-page copy. citeturn193468search0turn193468search4
+
+### Tool priorities
+
+| Tool | MVP priority | Main user value | Server cost | Paid data required? |
+|---|---:|---|---:|---|
+| Website SEO Audit Checker | Highest | Diagnose a public page and explain fixes | Low–medium | No |
+| Meta Tag Generator + SERP Preview | High | Create/copy titles, descriptions and preview appearance | Very low | No |
+| Schema JSON-LD Generator | High | Produce valid structured data | Very low | No |
+
+The **Website SEO Audit Checker** should accept a single public `http` or `https` URL and return a transparent rule-based report. Core checks should include status code, final URL, title, meta description, canonical, robots meta, viewport, H1/H2/H3 structure, internal/external links, image alt coverage, Open Graph metadata, structured-data presence, basic indexability signals, and fetch timing. It should explicitly show which checks ran, which could not run, and why.
+
+Do **not** label its score a “Google SEO score.” Make it a custom product score and expose its calculation. Google’s official guidance does not define a universal 0–100 SEO score, and its own search documentation emphasizes individual technical/content signals rather than a single public SEO grade. citeturn803372search3turn822890search0
+
+The **Meta Tag Generator + SERP Preview** should accept page topic, primary keyword, optional URL, optional brand, and optional audience/intent. It should output several title and description variants, copyable HTML, canonical markup when a URL is supplied, Open Graph suggestions, character/pixel guidance, and desktop/mobile preview states. Google states that there is **no hard maximum length for a meta description**; snippets are truncated as necessary, and Google may generate a snippet from page content rather than use the provided description. Therefore the UI should say “preview” rather than promise an exact Google rendering. citeturn264896search8turn264896search10
+
+The **Schema Generator** should initially support `Article`, `Product`, `LocalBusiness`, and `BreadcrumbList`. Use JSON-LD, validate field types and URLs, prevent obviously invalid or contradictory input, and never invent ratings or reviews. Google recommends JSON-LD for structured data, but also states that correct markup does not guarantee a rich result. citeturn679383search5turn679383search8turn679383search9
+
+### Required states for every tool
+
+| State | Required behavior |
+|---|---|
+| Empty | Example input + concise instructions |
+| Loading | Visible progress; no layout shift |
+| Success | Clear results + copy/download actions |
+| Validation error | Field-specific, accessible error message |
+| Network failure | Retry option + human-readable cause |
+| Partial audit | Show completed checks and unavailable checks |
+| Rate limited | Explain retry policy without exposing internals |
+| Unsupported target | Explain why URL/schema input cannot be processed |
+
+## Architecture, backend and security
+
+The most important architectural rule is: **the browser must never fetch arbitrary audit targets directly through a privileged server proxy without strong destination controls**. That pattern can expose cloud metadata endpoints, localhost services, internal VPC resources and private networks. OWASP recommends application-layer validation plus network-layer restrictions; it also warns that redirects, DNS rebinding and parser discrepancies can bypass simplistic URL filtering. citeturn810390search0turn810390search2
+
+```mermaid
+flowchart LR
+    U[Public User] --> FE[React + TypeScript UI]
+    FE --> META[Meta Generator<br/>Client-side]
+    FE --> SCHEMA[Schema Generator<br/>Client-side]
+    FE --> API[Node API on Cloud Run]
+
+    API --> AUDIT[Audit Fetch Worker]
+    AUDIT --> GUARD[URL + DNS + IP Guard]
+    GUARD --> WEB[Public Internet]
+
+    FE --> GA[GA4]
+    A[Owner] --> AUTH[Firebase Auth]
+    AUTH --> ADMIN[Admin Dashboard]
+    ADMIN --> FS[(Firestore)]
+    ADMIN --> ADS[Ad Settings]
+    ADMIN --> CMS[Blog / Content CMS]
+
+    API --> LOG[Structured Logs / Monitoring]
+```
+
+Google AI Studio currently provides a React client and Node.js server runtime, supports npm packages and secret storage, can provision Firebase Authentication and Firestore, sync to GitHub, and deploy to Cloud Run. citeturn803372search0turn803372search1
+
+### Required backend endpoints
+
+| Endpoint | Method | Responsibility | Public? |
+|---|---|---|---|
+| `/api/audit` | POST | Fetch + analyze one public page | Yes, rate-limited |
+| `/api/health` | GET | Readiness/liveness status | Yes, minimal |
+| `/api/admin/articles` | CRUD | Blog/CMS | Admin only |
+| `/api/admin/settings` | GET/PATCH | Site/ad settings | Admin only |
+| `/api/admin/metrics` | GET | Aggregated app metrics | Admin only |
+| `/api/admin/errors` | GET | Operational incidents | Admin only |
+| `/api/feedback` | POST | User bug/feedback form | Yes, protected |
+
+For `/api/audit`, accept only `http:` and `https:` schemes; normalize with a standards-compliant URL parser; reject credentials in URLs; resolve A and AAAA records; reject loopback, link-local, RFC1918/private ranges, cloud metadata destinations, and internal hostnames; validate **every redirect destination** before following it; cap redirects; connect only to validated public destinations; and apply the same checks after DNS resolution to resist rebinding. OWASP explicitly warns against relying on regex or deny-lists alone and recommends validating destinations at both application and network layers. citeturn810390search0turn810390search2
+
+Recommended MVP safety limits are **your application policy**, not Google requirements: 8–12 second outbound fetch timeout, 2–3 redirect maximum, 2–4 MB response-body cap, HTML-only parsing, no execution of target JavaScript, and per-IP/per-session rate limiting. Cloud Run itself permits configurable request timeouts from 1 to 3600 seconds, but an SEO audit endpoint should impose a much shorter application timeout to control abuse and cost. citeturn822890search5
+
+Do not return the target site’s raw HTML to the client. Parse on the server and return normalized analysis results only.
+
+### Client versus server responsibilities
+
+| Client-side | Server-side |
+|---|---|
+| Meta title/description generation fallback | External URL fetching |
+| SERP preview rendering | SSRF and DNS/IP validation |
+| Schema form state | Redirect inspection |
+| JSON-LD creation/validation | Rate limiting |
+| Copy/download actions | Admin authorization |
+| Accessible form validation | Firestore privileged writes |
+| GA4 browser events | Secret API keys |
+| UI state/history in local storage | Optional external API calls |
+
+For owner access, use Firebase Authentication and an `admin` custom claim enforced on the backend and in Firestore Security Rules. Firebase explicitly warns that client-side claims should only change UI; privileged access must be enforced after token validation, and Firestore rules can test custom claims. citeturn822890search2turn822890search3
+
+## SEO, admin and AdSense readiness
+
+The public pages should be rendered as **crawlable HTML**. Google can process JavaScript, but it still recommends server-side rendering or pre-rendering as a strong approach because it improves speed and accessibility to crawlers that may not execute JavaScript. citeturn803372search4
+
+If Google AI Studio generates a SPA-only React scaffold, keep the tool interactions in React but **pre-render or SSR the public landing copy**. If the AI Studio runtime cannot produce the desired SSR architecture cleanly, sync the project to GitHub and deploy a framework or pre-render layer rather than shipping critical SEO copy only after hydration. AI Studio officially supports GitHub sync and Cloud Run deployment. citeturn803372search0turn803372search2
+
+### Recommended public sitemap
+
+| Route | Index? | Purpose |
+|---|---:|---|
+| `/` | Yes | Brand + 3-tool overview |
+| `/tools/seo-audit` | Yes | Audit landing/tool |
+| `/tools/meta-tag-generator` | Yes | Meta + SERP tool |
+| `/tools/schema-generator` | Yes | JSON-LD generator |
+| `/guides` | Yes | SEO education hub |
+| `/guides/[slug]` | Yes | Original articles |
+| `/about` | Yes | Business identity |
+| `/contact` | Yes | Contact |
+| `/privacy-policy` | Yes | Privacy disclosures |
+| `/terms` | Yes | Terms |
+| `/disclaimer` | Yes | Tool limitations |
+| `/admin/*` | No | Owner-only dashboard |
+| `/api/*` | No | API endpoints |
+
+Generate an XML sitemap containing only canonical indexable URLs and reference it from `robots.txt`. Google supports XML sitemaps and recommends absolute canonical URLs; sitemap submission is a hint, not an indexing guarantee. citeturn264896search7turn264896search9
+
+Target Core Web Vitals at the “good” thresholds: **LCP ≤ 2.5s, INP < 200ms, CLS < 0.1**, measured at the 75th percentile where field data is available. citeturn822890search0turn822890search1
+
+### Admin dashboard
+
+The private admin should include authentication, dashboard metrics, article CRUD, drafts/publishing, page SEO metadata, FAQ/editorial content, ad-slot configuration, consent/CMP settings, tool availability switches, error reports, feedback inbox, and basic audit usage metrics.
+
+GA4 supports custom events, so track privacy-conscious events such as `tool_view`, `audit_started`, `audit_completed`, `audit_failed`, `meta_copied`, `schema_copied`, and `report_downloaded`. Do not send the full audited URL as an analytics parameter unless you have a clear privacy basis; URLs can contain sensitive query strings. citeturn264896search5
+
+### AdSense readiness checklist
+
+Google prohibits artificial clicks/impressions, encouraging clicks, deceptive ad presentation, and ads on non-content pages or pages created primarily to show ads. Tool pages therefore need substantive instructions, useful results, FAQs/guidance, and ad units clearly separated from Analyze/Generate/Copy controls. citeturn803372search5
+
+The privacy policy must explain relevant Google-related data collection, cookies/identifiers and third-party processing. Google’s publisher policies explicitly require privacy disclosures for data collection/sharing arising from Google services. citeturn679383search6turn679383search7
+
+For users in the EEA, UK and Switzerland, publishers using Google publisher products are required to use a **Google-certified CMP integrated with the IAB TCF** when serving personalized ads. citeturn803372search6turn803372search7
+
+AdSense approval should remain a **future state**, not a claim in the application. Do not render fake ads or placeholder content that visually mimics Google advertising.
+
+## APIs, infrastructure and cost control
+
+The MVP does **not** require a paid SEO API. Your three launch tools can be built with server-side HTML analysis, client-side deterministic generators, Schema.org definitions, and optional Gemini assistance.
+
+### External API comparison
+
+| Provider | Free entry | Paid model | Useful for | MVP required? |
+|---|---|---|---|---:|
+| Google PageSpeed Insights API | API may be called without a key; key recommended for frequent automated use | Quota-controlled Google API | Lighthouse/performance data | Optional |
+| DataForSEO SERP API | Trial/sandbox; $1 initial credit stated | Standard Google SERP starts around $0.0006/SERP; live around $0.002/SERP | Rank/SERP tracking later | No |
+| SerpApi | 250 searches/month free | Starter $25/mo for 1,000 searches as of Oct 2026 | SERP/rank features later | No |
+| Semrush API | No practical free production API for this use | Business subscription + purchased API units | Keywords/backlinks/competitive data | No |
+| Gemini API | AI Studio manages server-side key when used | Usage depends on selected model/tier | Optional meta-copy suggestions | No |
+
+Google documents PSI as a REST API for page performance analysis and recommends a key for frequent automated use. citeturn843127search0turn843127search1 DataForSEO’s current official pricing shows standard Google SERP requests from $0.0006 and live mode from $0.002 per SERP. citeturn843127search4turn843127search6 SerpApi currently lists a free 250-search tier and a $25/month 1,000-search Starter plan. citeturn843127search7 Semrush’s API currently requires its SEO Business subscription plus separately purchased API units. citeturn843127search8turn193468search9
+
+Therefore these features should **not** be advertised at MVP unless a real licensed source is connected: keyword search volumes, ranking positions, backlink counts, domain authority-style scores, competitor traffic, SERP-history datasets, or historical keyword data.
+
+### Hosting recommendation
+
+**Primary recommendation:** Cloud Run for the whole app initially. It is directly supported by Google AI Studio deployment and charges based on resource use after applicable free-tier allowances. citeturn803372search2turn822890search4
+
+**Optional split architecture:** Cloudflare Pages for pre-rendered/static public pages plus Cloud Run for the audit/API backend. Cloudflare’s Free Pages plan currently allows 500 builds/month and up to 20,000 files, but Pages Functions consume Workers quotas. citeturn822890search7
+
+Firestore is sufficient for a small admin CMS; the standard free quota currently includes 1 GiB storage, 50,000 reads/day, 20,000 writes/day and 20,000 deletes/day for one qualifying database. Backups/restore features can require billing, so do not assume production backups are free. citeturn264896search0turn264896search2
+
+Cost controls should include API quotas, hard fetch/body limits, caching of safe short-lived audit results, concurrency limits, budget alerts, no minimum Cloud Run instances initially, and disabling optional paid APIs until usage justifies them. Cloud Run concurrency can be configured and directly affects instance scaling/resource consumption. citeturn822890search4turn822890search6
+
+## Testing, rollout and operating KPIs
+
+Target **WCAG 2.2 AA** as the accessibility acceptance standard. WCAG 2.2 is a W3C Recommendation; Level AA includes all Level A and AA success criteria. citeturn679383search0turn679383search2
+
+Testing should include URL normalization, redirects, dead domains, invalid TLS, huge HTML, malformed markup, duplicate metadata, pages without headings, pages with multiple H1s, pages blocked by robots, non-HTML content, IPv4/IPv6 private ranges, localhost aliases, metadata endpoints, DNS rebinding simulations, redirect-to-private-host tests, rate-limit tests, and admin-auth bypass attempts. The SSRF cases are specifically motivated by OWASP guidance on redirects, internal IPs and DNS-based bypasses. citeturn810390search0
+
+Use unit tests for audit rules/schema validators, integration tests for API contracts, end-to-end tests for all three user flows and admin authentication, accessibility testing with automated tooling plus keyboard/manual checks, Lighthouse/PSI checks, and monitoring alerts for elevated 5xx rates.
+
+### Phased roadmap
+
+These are **planning estimates**, not guarantees. They assume one competent full-stack developer using Google AI Studio as an accelerator, with branding/legal copy and domain procurement happening in parallel.
+
+| Phase | Estimated time | Milestone |
+|---|---:|---|
+| MVP tools + public UI | 2–3 weeks | All 3 tools work; audit endpoint hardened |
+| Admin/CMS + analytics | 1–2 weeks | Owner auth, Firestore, CMS, GA4 |
+| SEO/content + QA | 1–2 weeks | SSR/SSG pages, sitemap, guides, accessibility/security tests |
+| AdSense-ready launch | ~1 week | Legal/CMP/ad slots configured; production monitoring live |
+
+**Practical target: about 5–8 weeks** for a careful first production release. AI Studio can generate full-stack React/Node applications and Firebase integrations, which can compress implementation work, but security testing, content, DNS/deployment and policy review still require deliberate engineering. citeturn803372search0turn803372search1
+
+### KPIs to track
+
+| KPI | Why it matters |
+|---|---|
+| Organic clicks/impressions by tool | Search demand validation |
+| Tool-start → success rate | Product reliability |
+| Audit failure rate | Backend/fetch health |
+| Repeat users | Utility/retention |
+| Tool-to-tool navigation rate | Ecosystem engagement |
+| Search CTR | Landing-page effectiveness |
+| LCP/INP/CLS | User experience |
+| API cost per successful audit | Unit economics |
+| Ad impressions/pageview after approval | Monetization |
+| Revenue per 1,000 pageviews after approval | Ad efficiency |
+| Blog → tool click-through | Content-to-product funnel |
+| Admin/error incidents per 1,000 audits | Operational quality |
+
+## Developer handoff and final Google AI Studio prompt
+
+### File-by-file deliverable
+
+A clean handoff should contain at least:
+
+| Path | Purpose |
+|---|---|
+| `README.md` | Setup, run, test, deploy |
+| `.env.example` | Required environment variables |
+| `package.json` | Scripts/dependencies |
+| `src/app/*` or routing equivalent | Public routes |
+| `src/components/layout/*` | Header/footer/navigation |
+| `src/components/tools/SeoAudit/*` | Audit UI |
+| `src/components/tools/MetaGenerator/*` | Meta/SERP UI |
+| `src/components/tools/SchemaGenerator/*` | Schema UI |
+| `src/lib/audit/rules.ts` | Transparent audit rules |
+| `src/lib/audit/scoring.ts` | Scoring weights/explanation |
+| `src/lib/schema/*` | JSON-LD builders/validators |
+| `src/lib/meta/*` | Title/description logic |
+| `src/server/routes/audit.ts` | Audit endpoint |
+| `src/server/security/urlGuard.ts` | URL parsing/allow/deny logic |
+| `src/server/security/ipGuard.ts` | Public-IP validation |
+| `src/server/security/rateLimit.ts` | Abuse limits |
+| `src/server/auth/admin.ts` | Firebase token/admin claim verification |
+| `src/admin/*` | Private dashboard |
+| `src/content/*` | Tool docs/guides |
+| `firebase.rules` | Firestore authorization |
+| `sitemap.*` | Sitemap generator/config |
+| `robots.txt` or generator | Crawler directives |
+| `tests/unit/*` | Rule/schema tests |
+| `tests/integration/*` | API tests |
+| `tests/e2e/*` | Browser flows |
+| `Dockerfile` | Cloud Run build |
+| `cloudrun.yaml` or deploy docs | Deployment config |
+| `docs/SECURITY.md` | SSRF/auth/threat model |
+| `docs/ADSENSE.md` | Ad/CMP setup |
+| `docs/OPERATIONS.md` | Monitoring/backups/rollback |
+
+The developer handoff should also include a **known-limitations document**, environment-variable inventory, owner setup procedure, Firebase admin-claim procedure, restore procedure, rollback procedure, and acceptance-test results.
+
+### Consolidated Google AI Studio Master Prompt
+
+> **Build a production-ready, worldwide English-first SEO Tools web application. Do not build a mockup. Build the functioning application.**
+>
+> You are acting as a senior full-stack engineer, application-security engineer, technical SEO specialist, accessibility engineer, UI/UX designer and production architect.
+>
+> Build this project in Google AI Studio using React + TypeScript for the web UI and a Node.js server runtime. Use the Google AI Studio full-stack environment, npm packages, server-side secrets, Firebase Authentication/Firestore where appropriate, GitHub-compatible source structure, and Cloud Run-compatible deployment.
+>
+> The site must launch with **EXACTLY THREE public interactive SEO tools and no others**:
+>
+> **1. Website SEO Audit Checker**
+>
+> Accept one public HTTP/HTTPS URL and actually fetch/analyze the page through a secure server-side endpoint.
+>
+> Analyze at minimum:
+> page title; title length; meta description; canonical; robots meta; viewport; final URL/status; H1/H2/H3 hierarchy; images and missing alt attributes; internal/external links; Open Graph metadata; JSON-LD/structured-data presence; basic indexability signals; fetch timing.
+>
+> Return:
+> transparent custom score out of 100; passed checks; warnings; errors; actionable fixes; which checks were completed; which could not be completed; downloadable/copyable summary.
+>
+> The score must be explicitly described as this product's own rule-based score, not an official Google score.
+>
+> Implement a secure `/api/audit` backend with:
+> strict URL parsing; only HTTP/HTTPS; no URL credentials; DNS resolution; IPv4 and IPv6 validation; rejection of localhost, loopback, link-local, private ranges, internal networks and cloud metadata destinations; validation of every redirect destination; limited redirects; DNS-rebinding resistance; connection only to validated public destinations; outbound timeout; maximum response size; HTML content-type validation; safe parsing; rate limiting; request logging without sensitive data.
+>
+> Do not execute JavaScript from audited websites and do not return their raw HTML to the browser.
+>
+> **2. Meta Tag Generator + SERP Preview**
+>
+> Inputs:
+> topic/page description; primary keyword; optional brand name; optional URL; optional search intent/tone.
+>
+> Outputs:
+> at least 5 title suggestions; at least 5 meta-description suggestions; copyable `<title>` and meta-description markup; canonical tag when URL exists; Open Graph title/description suggestions; desktop/mobile SERP-style preview; counters/guidance; copy buttons.
+>
+> The tool must state that the preview is approximate and Google may rewrite titles/snippets. Do not present title/meta character counts as hard Google ranking limits.
+>
+> AI suggestions may optionally use Gemini via a server-side secret, but the tool must have a deterministic non-AI fallback so it remains useful without paid API usage.
+>
+> **3. Schema JSON-LD Markup Generator**
+>
+> Support exactly these schema templates at launch:
+> Article, Product, LocalBusiness, BreadcrumbList.
+>
+> Provide dynamic forms, URL/type validation, required/recommended-field guidance, live JSON-LD output, syntax validation, copy button, JSON download, implementation instructions, and a link to Google's Rich Results Test.
+>
+> Use Schema.org-compatible properties. Never fabricate ratings, reviews, prices, addresses, authors or business facts. Explain that valid schema does not guarantee a rich result.
+>
+> **Architecture**
+>
+> Keep Meta/SERP and Schema generation client-side wherever possible.
+> Keep external URL fetching, secrets, privileged Firestore operations and admin authorization server-side.
+>
+> Separate UI, domain logic, validators, server routes and security modules.
+>
+> Public landing-page content must be rendered as crawlable HTML using SSR, SSG or pre-rendering. Do not rely exclusively on client-side rendering for critical SEO content.
+>
+> If the default AI Studio React scaffold cannot produce the required rendered HTML cleanly, implement a pre-render strategy or generate a compatible production architecture suitable for deployment after GitHub sync.
+>
+> **Routes**
+>
+> `/`
+> `/tools/seo-audit`
+> `/tools/meta-tag-generator`
+> `/tools/schema-generator`
+> `/guides`
+> `/guides/[slug]`
+> `/about`
+> `/contact`
+> `/privacy-policy`
+> `/terms`
+> `/disclaimer`
+> `/admin`
+>
+> Do not create additional public tool pages.
+>
+> **SEO requirements**
+>
+> Unique titles/meta descriptions; canonical URLs; semantic HTML; correct heading hierarchy; crawlable internal links; Open Graph metadata; XML sitemap; robots.txt; correct 404 responses; noindex for admin/private routes; appropriate structured data; accessible HTML; clean URLs.
+>
+> Target Core Web Vitals:
+> LCP <= 2.5 seconds, INP < 200 ms, CLS < 0.1.
+>
+> Generate useful original explanatory content around each tool. Do not keyword-stuff or mass-produce thin pages.
+>
+> **Private Admin Dashboard**
+>
+> Use Firebase Authentication with a single owner/admin identity and an admin custom claim.
+> Enforce authorization both server-side and in Firestore Security Rules.
+>
+> Include:
+> dashboard overview; article CRUD; draft/publish; tool-page text/FAQ editing; homepage content; page metadata; ad-slot configuration; analytics summary; operational errors; feedback inbox; tool enable/disable switches; consent/CMP configuration fields; logout.
+>
+> A hidden admin URL is not security.
+>
+> **Analytics**
+>
+> Prepare GA4 integration.
+> Track:
+> `tool_view`, `audit_started`, `audit_completed`, `audit_failed`, `meta_copied`, `schema_copied`, `report_downloaded`.
+>
+> Do not send full audited URLs or sensitive query strings to analytics by default.
+>
+> Prepare Search Console verification support.
+>
+> **AdSense readiness**
+>
+> Add configurable ad-slot components but do not render fake Google ads and do not claim AdSense approval.
+>
+> Ad slots must be visually separated from Analyze, Generate, Copy and Download controls.
+>
+> Never encourage ad clicks or force users through ads before seeing results.
+>
+> Include Privacy Policy, Terms, Disclaimer, About and Contact pages.
+>
+> Prepare support for a Google-certified CMP for EEA/UK/Switzerland traffic when AdSense is enabled.
+>
+> Keep ad scripts disabled until real publisher configuration is provided.
+>
+> **Accessibility**
+>
+> Target WCAG 2.2 AA.
+> Provide semantic labels, keyboard navigation, visible focus, sufficient contrast, accessible status/error messages, reduced-motion consideration, logical tab order and screen-reader-friendly dynamic updates.
+>
+> **Reliability and security**
+>
+> Validate all input.
+> Never expose secrets in browser code.
+> Add rate limiting and abuse protection.
+> Add application-level audit timeout and response-size limits.
+> Add safe error handling.
+> Do not store audited URLs or generated content permanently by default.
+> Add structured operational logging without sensitive payloads.
+> Add monitoring hooks.
+> Implement Content Security Policy and sensible security headers where compatible.
+>
+> **Data**
+>
+> Use Firestore only for admin-managed content/settings/feedback and necessary application metadata.
+> Do not store public users' SEO audit submissions unless explicitly configured later.
+>
+> **Optional external APIs**
+>
+> The MVP must not depend on paid keyword, backlink or SERP APIs.
+> Do not display keyword volume, rankings, backlinks, traffic estimates or domain-authority metrics unless a licensed real data provider is connected.
+>
+> PageSpeed Insights may be added as an optional integration, but the core SEO audit must remain functional without it.
+>
+> **Testing**
+>
+> Add unit tests for audit rules/scoring and schema builders.
+> Add integration tests for `/api/audit`, authorization and Firestore operations.
+> Add end-to-end tests for all three tools and admin login.
+>
+> Test malicious/edge URLs including:
+> localhost; private IPv4; IPv6 loopback/private; link-local; metadata endpoints; redirects to private IPs; DNS rebinding-style cases; malformed URLs; invalid TLS; timeouts; huge responses; non-HTML files.
+>
+> Test mobile and desktop layouts.
+> Run accessibility checks and keyboard testing.
+> Test all copy/download actions.
+> Ensure rendered public HTML contains expected metadata before JavaScript executes.
+>
+> **Deployment**
+>
+> Make the app Cloud Run ready.
+> Include Docker/build configuration, environment-variable documentation, Firebase setup, domain/DNS steps, Search Console setup, GA4 setup, CMP/AdSense setup, monitoring, backup and rollback instructions.
+>
+> Prefer zero/minimal fixed infrastructure cost at launch.
+> Use configurable quotas, rate limits, caching and concurrency limits to control spending.
+>
+> **Deliverables**
+>
+> Provide all application code, backend code, Firestore rules, `.env.example`, README, Dockerfile, deployment docs, security/threat-model document, AdSense/CMP setup document, operational runbook, tests, sitemap/robots implementation, and a known-limitations document.
+>
+> Use a modular folder structure so additional tools can be added later, but **do not implement any additional public tool now**.
+>
+> Before declaring completion:
+> run the build; fix TypeScript/build errors; run tests; verify all three tools with real input; verify SSRF protections; verify public users cannot access admin operations; verify metadata exists in rendered HTML; verify secrets are not exposed; verify mobile accessibility; and clearly list any manual production configuration still required.
+>
+> Do not stop after generating the homepage. Deliver a complete functioning application suitable for developer handoff and production deployment.
+
+The most important development constraint is to **resist scope creep**: launch three excellent tools, measure actual search and usage data, then expand only when Search Console and GA4 show which adjacent utility users want next. Google Search Console, sitemap reporting and GA4 events provide the right first-party evidence for that decision. citeturn264896search5turn264896search7
