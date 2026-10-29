@@ -17,7 +17,37 @@ const PORT = Number(process.env.PORT) || 3000;
 const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 
 const app = express();
+// Enable a single trusted reverse-proxy hop only when deployed behind Cloud Run.
+if (process.env.TRUST_PROXY_HOPS === '1') app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
+
+// CORS is needed ONLY when the GitHub Pages frontend calls a separate Cloud Run API.
+// Configure allowed public site origins on the server. Never use '*' for public audit APIs.
+const allowedOrigins = new Set((process.env.CORS_ALLOWED_ORIGINS || '')
+  .split(',').map(value => value.trim()).filter(Boolean));
+
+app.use('/api', (req, res, next) => {
+  const origin = req.get('Origin');
+  if (!origin) return next(); // e.g. curl, health monitors or server-to-server requests
+  let sameOrigin = false;
+  try {
+    const parsed = new URL(origin);
+    sameOrigin = parsed.host === req.get('host') && parsed.protocol === 'https:';
+  } catch {
+    return res.status(403).json({ error: 'Invalid request origin.' });
+  }
+
+  if (!sameOrigin && !allowedOrigins.has(origin)) {
+    return res.status(403).json({ error: 'Origin is not allowed.' });
+  }
+
+  res.vary('Origin');
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  next();
+});
 
 // Security headers
 app.use((req, res, next) => {
@@ -86,7 +116,7 @@ ${routes
 
 // SEO Audit API Endpoint (Protected with Rate Limiter & SSRF Guards)
 app.post('/api/audit', async (req, res) => {
-  const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+  const clientIp = req.ip || 'unknown';
   const rateLimit = checkRateLimit(clientIp, 15, 60000); // 15 audits/min per IP
 
   if (!rateLimit.allowed) {
@@ -112,7 +142,7 @@ app.post('/api/audit', async (req, res) => {
 
 // Gemini Search Grounding API Endpoint
 app.post('/api/search-grounding', async (req, res) => {
-  const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+  const clientIp = req.ip || 'unknown';
   const rateLimit = checkRateLimit(`gemini_${clientIp}`, 10, 60000);
 
   if (!rateLimit.allowed) {
