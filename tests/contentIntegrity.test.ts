@@ -28,10 +28,15 @@ test('the 4 educational guides have topic-specific bodies', () => {
   assert.doesNotMatch(detail, /\|\| ARTICLES_DATA\[0\]/);
 });
 
-test('frontend-only GitHub Pages preview does not pretend API audit works', () => {
+test('GitHub Pages audit requires a configured healthy API and has no fake scores', () => {
   const tool = source('src/components/tools/SeoAudit/SeoAuditTool.tsx');
-  assert.match(tool, /GitHub Pages/);
-  assert.match(tool, /disabled=\{loading \|\| isStaticPreview\}/);
+  const api = source('src/lib/apiClient.ts');
+  const workflow = source('.github/workflows/deploy-pages.yml');
+  assert.match(tool, /disabled=\{loading \|\| apiUnavailable\}/);
+  assert.match(tool, /checkApiHealth\(\)/);
+  assert.match(api, /API_CONFIGURED/);
+  assert.match(api, /VITE_API_BASE_URL/);
+  assert.match(workflow, /vars\.RANKNOVA_API_BASE_URL/);
 });
 
 test('private Firestore admin access cannot be granted by an admins document', () => {
