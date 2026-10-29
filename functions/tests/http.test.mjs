@@ -7,7 +7,16 @@ const require = createRequire(import.meta.url);
 const { ranknovaApi } = require('../lib/index.cjs');
 
 async function withServer(run) {
-  const server = createServer((req, res) => ranknovaApi(req, res));
+  const server = createServer(async (req, res) => {
+    // The Firebase HTTP framework normally parses JSON before it calls the function.
+    // Simulate that behavior in this standalone smoke-test server.
+    let raw = '';
+    for await (const part of req) raw += part;
+    if (req.headers['content-type']?.includes('application/json') && raw) {
+      req.body = JSON.parse(raw);
+    }
+    await ranknovaApi(req, res);
+  });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   try {
     const address = server.address();
