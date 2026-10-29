@@ -22,7 +22,8 @@ export const API_BASE_URL = normalizeApiBase(configured);
 export const IS_GITHUB_PAGES = typeof window !== 'undefined' && window.location.hostname.endsWith('.github.io');
 
 // A static site never assumes its /api/* routes are present.
-export const API_CONFIGURED = !IS_GITHUB_PAGES || Boolean(API_BASE_URL);
+export const IS_STATIC_SITE = import.meta.env.VITE_STATIC_SITE === 'true' || IS_GITHUB_PAGES;
+export const API_CONFIGURED = !IS_STATIC_SITE || Boolean(API_BASE_URL);
 
 export function apiEndpoint(path: '/api/health' | '/api/audit' | '/api/search-grounding'): string {
   return `${API_BASE_URL}${path}`;
