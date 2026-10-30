@@ -11,7 +11,7 @@ import {
   Save
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
-import { signInWithGoogle } from '../lib/supabase';
+import { signInWithGoogle, SUPABASE_CONFIGURED } from '../lib/supabase';
 import {
   DEFAULT_SETTINGS, getAdminSettings, getAdminFeedback, getAdminArticles,
   addArticle, saveAdminSettings, deleteFeedback
@@ -150,10 +150,11 @@ export const AdminPage: React.FC<{currentUser: User | null; ownerConfirmed: bool
           This portal is restricted to the owner account that was authorized in the Supabase database. Login alone does not grant admin access.
         </p>
         <button
+          disabled={!SUPABASE_CONFIGURED}
           onClick={() => signInWithGoogle().catch(error => { console.error('Admin sign-in failed', error); alert('Unable to sign in. Check Supabase Google provider and redirect settings.'); })}
           className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
         >
-          Sign in with Owner Google Account
+          {SUPABASE_CONFIGURED ? 'Sign in with Owner Google Account' : 'Owner login unavailable until Supabase is connected'}
         </button>
       </div>
     );
