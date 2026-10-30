@@ -26,8 +26,17 @@ jobs:
         run: |
           BUILD_TYPE=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.build_type // "unknown"')
           echo "GitHub Pages build type: $BUILD_TYPE"
+          if [ "$BUILD_TYPE" = "legacy" ]; then
+            echo "Trying to switch Pages from branch publishing to GitHub Actions..."
+            if ! gh api --method PUT "repos/${GITHUB_REPOSITORY}/pages" -f build_type=workflow; then
+              echo "::error::Could not switch Pages automatically. Open Settings > Pages > Build and deployment > Source and select GitHub Actions, then rerun."
+              exit 1
+            fi
+            BUILD_TYPE=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.build_type // "unknown"')
+            echo "GitHub Pages build type after update: $BUILD_TYPE"
+          fi
           if [ "$BUILD_TYPE" != "workflow" ]; then
-            echo "::error::GitHub Pages is set to Deploy from a branch. Open Settings > Pages > Build and deployment > Source and select GitHub Actions, then rerun this workflow."
+            echo "::error::GitHub Pages must use GitHub Actions as the build source. Change it under Settings > Pages."
             exit 1
           fi
       - name: Set up Node.js
