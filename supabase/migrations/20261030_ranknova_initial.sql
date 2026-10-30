@@ -155,5 +155,19 @@ $$;
 revoke all on function public.submit_ranknova_feedback(text,text,text,text) from public;
 grant execute on function public.submit_ranknova_feedback(text,text,text,text) to anon, authenticated;
 
--- Only authenticated owner can insert initial settings. No live ads by default.
+-- Explicit table grants (RLS policies alone do not restrict table-level privileges).
+revoke all on public.admin_users, public.articles, public.feedback,
+  public.site_settings, public.audit_history from anon, authenticated;
+
+grant select on public.admin_users to authenticated;
+grant select on public.articles to anon, authenticated;
+grant insert, update, delete on public.articles to authenticated;
+grant select, delete on public.feedback to authenticated;
+grant select, insert, update on public.site_settings to authenticated;
+grant select, insert, delete on public.audit_history to authenticated;
+
+-- No direct public insert into feedback; anonymous contacts must use the
+-- validated submit_ranknova_feedback RPC (still needs CAPTCHA/WAF prelaunch).
+-- The service secret bypasses RLS only in offline migration jobs, never browser.
+
 commit;
