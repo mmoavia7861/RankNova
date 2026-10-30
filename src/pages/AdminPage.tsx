@@ -10,17 +10,12 @@ import {
   Lock,
   Save
 } from 'lucide-react';
-import { auth, db, handleFirestoreError, OperationType, isUserAdmin, ADMIN_EMAIL } from '../lib/firebase';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import type { User } from '@supabase/supabase-js';
+import { signInWithGoogle } from '../lib/supabase';
 import {
-  collection,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  doc,
-  setDoc,
-  getDoc
-} from 'firebase/firestore';
+  DEFAULT_SETTINGS, getAdminSettings, getAdminFeedback, getAdminArticles,
+  addArticle, saveAdminSettings, deleteFeedback
+} from '../lib/data';
 
 interface ArticleItem {
   id: string;
@@ -42,7 +37,7 @@ interface FeedbackItem {
   createdAt: string;
 }
 
-export const AdminPage: React.FC = () => {
+export const AdminPage: React.FC<{currentUser: User | null; ownerConfirmed: boolean}> = ({currentUser, ownerConfirmed}) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'articles' | 'settings' | 'feedback'>('overview');
   const [loading, setLoading] = useState(false);
   const [dataError, setDataError] = useState('');
@@ -72,43 +67,26 @@ export const AdminPage: React.FC = () => {
   // Feedback State
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
 
-  const user = auth.currentUser;
-  const isAdmin = user && isUserAdmin(user.email);
+  const user = currentUser;
+  const isAdmin = ownerConfirmed;
 
   useEffect(() => {
-    if (isAdmin) {
-      loadAdminData();
-    }
+    if (isAdmin) void loadAdminData();
   }, [isAdmin]);
 
   const loadAdminData = async () => {
     setLoading(true);
     setDataError('');
     try {
-      // 1. Fetch site settings
-      const settingsDoc = await getDoc(doc(db, 'settings', 'config'));
-      if (settingsDoc.exists()) {
-        setSiteSettings(settingsDoc.data() as any);
-      }
-
-      // 2. Fetch feedback
-      const feedbackSnap = await getDocs(collection(db, 'feedback'));
-      const fbList: FeedbackItem[] = [];
-      feedbackSnap.forEach(d => {
-        fbList.push({ id: d.id, ...(d.data() as any) });
-      });
-      setFeedbacks(fbList);
-
-      // 3. Fetch articles
-      const articleSnap = await getDocs(collection(db, 'articles'));
-      const artList: ArticleItem[] = [];
-      articleSnap.forEach(d => {
-        artList.push({ id: d.id, ...(d.data() as any) });
-      });
-      setArticles(artList);
+      const [settings, feedback, articles] = await Promise.all([
+        getAdminSettings(), getAdminFeedback(), getAdminArticles()
+      ]);
+      setSiteSettings(settings);
+      setFeedbacks(feedback);
+      setArticles(articles);
     } catch (err) {
-      console.error('Failed to load admin data:', err);
-      setDataError('Admin data could not be loaded. Check Firebase configuration and deployed security rules. Counters may be incomplete.');
+      console.error('Unable to load owner dashboard', err);
+      setDataError('Unable to load Supabase records. Verify your project, SQL migration and owner-only RLS membership.');
     } finally {
       setLoading(false);
     }
@@ -117,63 +95,47 @@ export const AdminPage: React.FC = () => {
   const handleSaveSettings = async () => {
     try {
       setSettingsSaved(false);
-      await setDoc(doc(db, 'settings', 'config'), {
-        ...siteSettings,
-        updatedAt: new Date().toISOString()
-      });
+      setDataError('');
+      await saveAdminSettings(siteSettings);
       setSettingsSaved(true);
       setTimeout(() => setSettingsSaved(false), 2000);
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, 'settings/config');
+      setDataError(err instanceof Error ? err.message : 'Settings could not be saved.');
     }
   };
 
   const handleCreateArticle = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newSlug.trim()) return;
-
+    const slug = newSlug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (!newTitle.trim() || !slug || !newContent.trim()) {
+      setDataError('Title, valid slug and full article content are required.');
+      return;
+    }
     try {
-      const docRef = await addDoc(collection(db, 'articles'), {
-        title: newTitle.trim(),
-        slug: newSlug.trim().toLowerCase().replace(/\s+/g, '-'),
-        category: newCategory.trim(),
-        excerpt: newExcerpt.trim(),
-        content: newContent.trim(),
+      setDataError('');
+      const created = await addArticle({
+        title: newTitle.trim(), slug, category: newCategory.trim(),
+        excerpt: newExcerpt.trim(), content: newContent.trim(),
         published: true,
-        author: user?.displayName || 'RankNova Editor',
-        createdAt: new Date().toISOString()
+        author: (user?.user_metadata?.full_name as string) || 'RankNova Editor'
       });
-
-      setArticles([
-        {
-          id: docRef.id,
-          title: newTitle,
-          slug: newSlug,
-          category: newCategory,
-          excerpt: newExcerpt,
-          published: true,
-          author: user?.displayName || 'RankNova Editor',
-          createdAt: new Date().toISOString()
-        },
-        ...articles
-      ]);
-
+      setArticles(prev => [created, ...prev]);
       setNewTitle('');
       setNewSlug('');
       setNewExcerpt('');
       setNewContent('');
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'articles');
+      setDataError(err instanceof Error ? err.message : 'Article creation failed.');
     }
   };
 
   const handleDeleteFeedback = async (id: string) => {
     if (!window.confirm('Delete this feedback submission?')) return;
     try {
-      await deleteDoc(doc(db, 'feedback', id));
-      setFeedbacks(feedbacks.filter(f => f.id !== id));
+      await deleteFeedback(id);
+      setFeedbacks(prev => prev.filter(item => item.id !== id));
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `feedback/${id}`);
+      setDataError(err instanceof Error ? err.message : 'Could not delete contact message.');
     }
   };
 
@@ -185,10 +147,10 @@ export const AdminPage: React.FC = () => {
         </div>
         <h2 className="text-xl font-bold text-slate-900">Admin Authentication Required</h2>
         <p className="text-xs text-slate-600 leading-relaxed">
-          This portal is restricted to the platform owner (<code>{ADMIN_EMAIL}</code>). Please authenticate with your verified Google account.
+          This portal is restricted to the owner account that was authorized in the Supabase database. Login alone does not grant admin access.
         </p>
         <button
-          onClick={() => signInWithPopup(auth, new GoogleAuthProvider()).catch(error => { console.error('Admin sign-in failed', error); alert('Unable to sign in. Check your Google account and Firebase authorized domains.'); })}
+          onClick={() => signInWithGoogle().catch(error => { console.error('Admin sign-in failed', error); alert('Unable to sign in. Check Supabase Google provider and redirect settings.'); })}
           className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
         >
           Sign in with Owner Google Account
@@ -199,6 +161,7 @@ export const AdminPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      {dataError && <p role="alert" className="rounded-xl p-3 bg-rose-50 text-rose-800 border border-rose-200">{dataError}</p>}
       {/* Admin Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div className="space-y-1">
@@ -259,7 +222,7 @@ export const AdminPage: React.FC = () => {
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
               <span className="text-xs text-slate-500 font-medium">Contact Submissions</span>
               <div className="text-2xl font-bold text-slate-900">{dataError ? "—" : feedbacks.length}</div>
-              <span className="text-[11px] text-purple-700 font-medium">Stored in Firestore</span>
+              <span className="text-[11px] text-purple-700 font-medium">Stored in Supabase PostgreSQL</span>
             </div>
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
               <span className="text-xs text-slate-500 font-medium">AdSense Readiness</span>
@@ -358,7 +321,7 @@ export const AdminPage: React.FC = () => {
             <h3 className="text-sm font-bold text-slate-900">Published Dynamic Articles</h3>
             {articles.length === 0 ? (
               <p className="text-xs text-slate-500">
-                No custom articles published in Firestore yet. Pre-rendered core guides are active in the Guides hub.
+                No custom articles published in Supabase yet. Pre-rendered core guides are active in the Guides hub.
               </p>
             ) : (
               <div className="space-y-3">
@@ -389,7 +352,7 @@ export const AdminPage: React.FC = () => {
             <h3 className="text-sm font-bold text-slate-900">Site & Monetization Configuration</h3>
             {settingsSaved && (
               <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Saved to Firestore!
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Saved to Supabase!
               </span>
             )}
           </div>
