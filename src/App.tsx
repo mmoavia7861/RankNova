@@ -66,8 +66,7 @@ export default function App() {
     return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
 
-  // Firestore is accessed only by features that need it.
-  // No unauthenticated startup request to a deliberately denied test document.
+  // PostgreSQL requests are made only by features that need them, after configuration.
 
   const navigate = (path: string) => {
     if (path !== currentPath) {
