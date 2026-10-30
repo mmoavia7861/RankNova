@@ -30,6 +30,19 @@ jobs:
         env:
           GITHUB_PAGES: 'true'
         run: npm run build
+      - name: Install Playwright browser testing dependencies
+        run: |
+          npm install --no-save playwright@1.58.2 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Verify browser loads RankNova home page
+        run: node scripts/browser-smoke.mjs
+      - name: Save startup screenshot if browser fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ranknova-browser-startup-debug
+          path: browser-startup.png
+          if-no-files-found: ignore
       - name: Install Firebase Functions dependencies
         run: npm --prefix functions install --no-audit --no-fund
       - name: Build Firebase Functions
