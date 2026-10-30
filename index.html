@@ -31,15 +31,15 @@
             lastError = String(event.reason.message || event.reason).slice(0, 300);
           }
         });
-        var rawViteSource = !!document.querySelector('script[type="module"][src="/src/main.tsx"]');
         setTimeout(function () {
+          var rawViteSource = !!document.querySelector('script[type="module"][src*="/src/main.tsx"]');
           var root = document.getElementById('root');
           if (root && root.childElementCount === 0) {
             var message = document.getElementById('ranknova-startup-message');
             var detail = document.getElementById('ranknova-startup-detail');
             if (detail) {
               detail.textContent = rawViteSource && location.hostname.endsWith('github.io')
-                ? 'GitHub Pages appears to be serving uncompiled React source instead of the Vite production build.'
+                ? 'GitHub Pages is publishing raw React/TypeScript source instead of the compiled Vite build. Fix GitHub repository Settings > Pages > Build and deployment > Source: GitHub Actions.'
                 : (lastError || 'The application bundle did not render. Check your JavaScript console and Network tab.');
             }
             if (message) message.hidden = false;
