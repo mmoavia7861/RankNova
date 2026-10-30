@@ -20,6 +20,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Confirm GitHub Pages source is GitHub Actions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BUILD_TYPE=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.build_type // "unknown"')
+          echo "GitHub Pages build type: $BUILD_TYPE"
+          if [ "$BUILD_TYPE" != "workflow" ]; then
+            echo "::error::GitHub Pages is set to Deploy from a branch. Open Settings > Pages > Build and deployment > Source and select GitHub Actions, then rerun this workflow."
+            exit 1
+          fi
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
