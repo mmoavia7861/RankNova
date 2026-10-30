@@ -39,8 +39,34 @@ test('GitHub Pages audit requires a configured healthy API and has no fake score
   assert.match(workflow, /vars\.RANKNOVA_API_BASE_URL/);
 });
 
-test('private Firestore admin access cannot be granted by an admins document', () => {
-  const rules = source('firestore.rules');
-  assert.doesNotMatch(rules, /exists\(\/databases\/\$\(database\)\/documents\/admins/);
-  assert.match(rules, /request\.auth\.token\.email_verified == true/);
+test('Supabase RLS and owner membership replace frontend email trust', () => {
+  const sql = source('supabase/migrations/20261030_ranknova_initial.sql');
+  const client = source('src/lib/supabase.ts');
+  const dashboard = source('src/pages/AdminPage.tsx');
+  assert.match(sql, /alter table public\.articles enable row level security/);
+  assert.match(sql, /alter table public\.feedback enable row level security/);
+  assert.match(sql, /alter table public\.admin_users enable row level security/);
+  assert.match(sql, /revoke all on public\.admin_users/);
+  assert.match(sql, /user_id = \(select auth\.uid\(\)\)/);
+  assert.match(sql, /security definer/);
+  assert.match(sql, /revoke all on function public\.submit_ranknova_feedback/);
+  assert.match(client, /VITE_SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(dashboard, /ownerConfirmed/);
+  assert.doesNotMatch(dashboard, /isUserAdmin|ADMIN_EMAIL/);
+});
+
+test('active public site features no longer import Firebase SDK', () => {
+  for (const path of [
+    'src/App.tsx', 'src/components/layout/Navbar.tsx',
+    'src/pages/AdminPage.tsx', 'src/pages/ContactPage.tsx',
+    'src/pages/GuidesPage.tsx', 'src/pages/GuideDetailPage.tsx',
+    'src/components/tools/SeoAudit/SeoAuditTool.tsx', 'src/lib/workspace.ts'
+  ]) assert.doesNotMatch(source(path), /from ['"]firebase(?:\/|['"])|from ['"][^'"]*\/firebase['"]/);
+});
+
+test('production build accepts Supabase public vars without revealing server secrets', () => {
+  const workflow = source('.github/workflows/deploy-pages.yml');
+  assert.match(workflow, /vars\.RANKNOVA_SUPABASE_URL/);
+  assert.match(workflow, /vars\.RANKNOVA_SUPABASE_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(workflow, /SUPABASE_SECRET_KEY|service_role/);
 });
