@@ -23,8 +23,8 @@ import { WorkspaceGmailModal } from '../../workspace/WorkspaceGmailModal';
 import { WorkspaceKeepModal } from '../../workspace/WorkspaceKeepModal';
 import { WorkspaceFormsModal } from '../../workspace/WorkspaceFormsModal';
 import { AdSlot } from '../../layout/AdSlot';
-import { auth, db, handleFirestoreError, OperationType } from '../../../lib/firebase';
-import { addDoc, collection } from 'firebase/firestore';
+import { getSupabase } from '../../../lib/supabase';
+import { saveUserAudit } from '../../../lib/data';
 import { API_CONFIGURED, apiEndpoint, checkApiHealth } from '../../../lib/apiClient';
 
 export const SeoAuditTool: React.FC = () => {
@@ -158,29 +158,23 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
     trackEvent('report_downloaded', { type: 'json_download' });
   };
 
-  const handleSaveToFirestore = async () => {
+  const handleSaveToSupabase = async () => {
     if (!report) return;
-    if (!auth.currentUser) {
-      alert('Please sign in with Google in the top bar to save audits to your cloud history.');
-      return;
-    }
-
     try {
-      const auditsCollection = 'audits';
-      await addDoc(collection(db, auditsCollection), {
-        userId: auth.currentUser.uid,
-        url: report.targetUrl,
-        score: report.score,
-        passedCount: report.summary.passed,
-        warningsCount: report.summary.warnings,
-        errorsCount: report.summary.errors,
-        title: report.metadata.title || '',
-        metaDescription: report.metadata.description || '',
-        createdAt: new Date().toISOString()
+      const { data: { user }, error } = await getSupabase().auth.getUser();
+      if (error || !user) {
+        alert('Sign in with Google to save your audit securely.');
+        return;
+      }
+      await saveUserAudit({
+        userId: user.id, url: report.targetUrl, score: report.score,
+        passedCount: report.summary.passed, warningsCount: report.summary.warnings,
+        errorsCount: report.summary.errors, title: report.metadata.title || '',
+        metaDescription: report.metadata.description || ''
       });
       setSavedToCloud(true);
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'audits');
+      setError(err instanceof Error ? err.message : 'Audit could not be saved.');
     }
   };
 
@@ -354,7 +348,7 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
                   <span>Download JSON</span>
                 </button>
                 <button
-                  onClick={handleSaveToFirestore}
+                  onClick={handleSaveToSupabase}
                   disabled={savedToCloud}
                   className={`px-3.5 py-2 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-colors cursor-pointer ${
                     savedToCloud

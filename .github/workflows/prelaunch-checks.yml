@@ -26,6 +26,20 @@ jobs:
         run: npm run lint
       - name: Unit and integrity tests
         run: npm test
+      - name: Verify PostgreSQL RLS with guest, user and owner roles
+        run: |
+          set -euo pipefail
+          docker run --name ranknova-rls-test -d \
+            -e POSTGRES_PASSWORD=local-test-only postgres:17
+          trap 'docker rm -f ranknova-rls-test || true' EXIT
+          for i in $(seq 1 40); do
+            if docker exec ranknova-rls-test pg_isready -U postgres >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          cat supabase/tests/bootstrap.sql \
+              supabase/migrations/20261030_ranknova_initial.sql \
+              supabase/tests/rls.sql | docker exec -i ranknova-rls-test \
+                psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres
       - name: Build GitHub Pages frontend
         env:
           GITHUB_PAGES: 'true'
@@ -43,12 +57,6 @@ jobs:
           name: ranknova-browser-startup-debug
           path: browser-startup.png
           if-no-files-found: ignore
-      - name: Install Firebase Functions dependencies
-        run: npm --prefix functions install --no-audit --no-fund
-      - name: Build Firebase Functions
-        run: npm --prefix functions run build
-      - name: Test Firebase Functions configuration
-        run: npm --prefix functions test
       - name: Build Cloud Run production container
         run: docker build --tag ranknova-api-smoke .
       - name: Smoke-test running API, CORS and SSRF protection

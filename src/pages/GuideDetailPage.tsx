@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { getPublishedArticle } from '../lib/data';
+import { SUPABASE_CONFIGURED } from '../lib/supabase';
 import { ArrowLeft, Clock, Calendar, User, ExternalLink } from 'lucide-react';
 import { ARTICLES_DATA, GuideArticle } from './GuidesPage';
 import { AdSlot } from '../components/layout/AdSlot';
@@ -171,23 +171,20 @@ export const GuideDetailPage: React.FC<GuideDetailPageProps> = ({ slug, onNaviga
       setCmsLoaded(true);
       return;
     }
-    getDocs(query(collection(db, 'articles'), where('published', '==', true)))
-      .then(snapshot => {
-        if (!active) return;
-        snapshot.forEach(item => {
-          const data = item.data();
-          if (data.slug !== slug || typeof data.content !== 'string') return;
+    if (!SUPABASE_CONFIGURED) {
+      setCmsLoaded(true);
+      return;
+    }
+    getPublishedArticle(slug)
+      .then(data => {
+        if (active && data) {
           setCmsArticle({
-            slug: data.slug,
-            title: data.title,
-            excerpt: data.excerpt || '',
-            category: data.category || 'SEO Guide',
-            readTime: 'Article',
-            publishedDate: typeof data.createdAt === 'string' ? data.createdAt.slice(0, 10) : '',
-            author: data.author || 'RankNova',
-            content: data.content
+            slug: data.slug, title: data.title, excerpt: data.excerpt,
+            category: data.category, readTime: 'Article',
+            publishedDate: data.createdAt.slice(0, 10),
+            author: data.author, content: data.content
           });
-        });
+        }
       })
       .catch(() => {})
       .finally(() => { if (active) setCmsLoaded(true); });

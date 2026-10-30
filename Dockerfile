@@ -16,7 +16,6 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/server.ts ./server.ts
 COPY --from=build /app/src/server ./src/server
 COPY --from=build /app/src/lib/audit ./src/lib/audit
-COPY --from=build /app/firebase-applet-config.json ./firebase-applet-config.json
 USER node
 EXPOSE 8080
 CMD ["npm", "start"]

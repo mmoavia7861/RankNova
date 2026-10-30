@@ -1,14 +1,12 @@
-import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from './firebase';
+import { getSupabase, supabase } from './supabase';
 
+// Workspace actions need separate Google OAuth permission: normal RankNova
+// Google sign-in must NOT ask for Gmail and Forms access.
 export const WORKSPACE_SCOPES = [
   'https://www.googleapis.com/auth/gmail.send',
-  'https://www.googleapis.com/auth/gmail.readonly',
-  'https://www.googleapis.com/auth/forms.body',
-  'https://www.googleapis.com/auth/forms.responses.readonly'
+  'https://www.googleapis.com/auth/forms.body'
 ];
 
-// Browser-safe Base64 (Vite does not guarantee Node's Buffer global).
 function toBase64Utf8(input: string): string {
   const bytes = new TextEncoder().encode(input);
   let binary = '';
@@ -17,13 +15,9 @@ function toBase64Utf8(input: string): string {
 }
 
 let cachedAccessToken: string | null = null;
-let isSigningIn = false;
-
-// Clear cached token when user signs out
-onAuthStateChanged(auth, user => {
-  if (!user) {
-    cachedAccessToken = null;
-  }
+supabase?.auth.onAuthStateChange((_event, session) => {
+  // Provider token is only present after Google grants the requested scopes.
+  cachedAccessToken = session?.provider_token || null;
 });
 
 export function getCachedAccessToken(): string | null {
@@ -34,27 +28,19 @@ export function setCachedAccessToken(token: string | null) {
   cachedAccessToken = token;
 }
 
-export async function googleWorkspaceSignIn(): Promise<{ user: User; accessToken: string }> {
-  try {
-    isSigningIn = true;
-    const provider = new GoogleAuthProvider();
-    WORKSPACE_SCOPES.forEach(scope => provider.addScope(scope));
-
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-
-    if (!credential?.accessToken) {
-      throw new Error('Could not retrieve access token from Google sign in.');
+export async function googleWorkspaceSignIn(): Promise<{ accessToken: string }> {
+  if (cachedAccessToken) return { accessToken: cachedAccessToken };
+  const { error } = await getSupabase().auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      scopes: WORKSPACE_SCOPES.join(' '),
+      redirectTo: window.location.href.split('#')[0],
+      queryParams: { prompt: 'consent' }
     }
-
-    cachedAccessToken = credential.accessToken;
-    return { user: result.user, accessToken: cachedAccessToken };
-  } catch (error) {
-    console.error('Workspace Sign In error:', error);
-    throw error;
-  } finally {
-    isSigningIn = false;
-  }
+  });
+  if (error) throw error;
+  // OAuth redirects to Google and back; do not pretend a token already exists.
+  throw new Error('Google Workspace permission flow started. Return here after granting consent.');
 }
 
 /**
@@ -72,7 +58,7 @@ export async function sendAuditEmailViaGmail(params: {
   }
 
   try {
-    const fromUser = auth.currentUser?.email || 'me';
+    const fromUser = (await getSupabase().auth.getUser()).data.user?.email || 'me';
     const emailLines = [
       `From: ${fromUser}`,
       `To: ${params.toEmail}`,

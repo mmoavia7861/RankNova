@@ -13,14 +13,14 @@ export const PrivacyPolicyPage: React.FC = () => (
       </section>
       <section className="space-y-2">
         <h2 className="text-base font-bold text-slate-900">Information you provide</h2>
-        <p><strong>Contact messages:</strong> If the contact form successfully connects to Firebase Firestore, it saves the name, email address, subject, message, and submission timestamp you enter. The website owner can review and delete these records in the admin interface. The form does not automatically send an email.</p>
+        <p><strong>Contact messages:</strong> If the contact form successfully connects to Supabase PostgreSQL, it saves the name, email address, subject, message, and submission timestamp you enter. The website owner can review and delete these records in the admin interface. The form does not automatically send an email.</p>
         <p><strong>SEO audit URLs:</strong> The server-side audit feature, when deployed, requests the public webpage URL you submit and analyzes its HTML. The current GitHub Pages preview cannot run this service. The server or hosting platform may temporarily record request information in operational logs; do not enter private URLs, access tokens or credentials.</p>
         <p><strong>Generated tags and schema:</strong> The Meta Tag and Schema Generators process entered form values in your browser. These tools do not require you to sign in.</p>
-        <p><strong>Owner login and optional Workspace actions:</strong> Firebase Authentication handles Google sign-in. If someone explicitly authorizes optional Google Workspace features, Google processes the OAuth permissions requested by those actions. Do not grant access unless you understand the scope shown by Google.</p>
+        <p><strong>Owner login and optional Workspace actions:</strong> Supabase Authentication handles Google sign-in. If someone explicitly authorizes optional Google Workspace features, Google processes the OAuth permissions requested by those actions. Do not grant access unless you understand the scope shown by Google.</p>
       </section>
       <section className="space-y-2">
         <h2 className="text-base font-bold text-slate-900">Hosting, storage, retention and security</h2>
-        <p>GitHub Pages serves the current static website. Firebase services are operated by Google when configured. Contact records remain in Firestore until the owner deletes them; no automatic deletion period is currently promised. We use Firebase security rules to restrict administrative data access, but their deployment must be verified in the Firebase project before launch.</p>
+        <p>GitHub Pages serves the current static website. Supabase Authentication and PostgreSQL are operated by Supabase when configured. Contact records remain in PostgreSQL until the owner deletes them; no automatic deletion period is currently promised. We use PostgreSQL Row Level Security policies to restrict administrative data access, but their deployment must be verified in the Firebase project before launch.</p>
       </section>
       <section className="space-y-2">
         <h2 className="text-base font-bold text-slate-900">Analytics, cookies and advertising</h2>

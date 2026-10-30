@@ -1,6 +1,6 @@
 # RankNova - Professional SEO Tools & Growth Analytics
 
-RankNova is a production-ready, worldwide English-first SEO Tools web application engineered with React + TypeScript, Express full-stack runtime, and Google Workspace integrations.
+RankNova is an evolving SEO-tools project built with React, TypeScript, an optional Express API and a staged Supabase PostgreSQL migration. Production readiness depends on environment configuration, security testing and hosting.
 
 ## The 3 Core Public SEO Tools
 
@@ -25,9 +25,9 @@ RankNova is a production-ready, worldwide English-first SEO Tools web applicatio
 ## Security & Architectural Highlights
 
 - **SSRF Hardening:** Strict URL scheme parsing, credential blocking, DNS A/AAAA record resolution, RFC1918 private IP rejection, cloud metadata (`169.254.169.254`) blocking, and per-redirect destination validation.
-- **Firebase Auth & Firestore:** Google sign-in with client SDK; Firestore database configured and protected with zero-trust security rules (`firestore.rules`).
+- **Supabase Auth & PostgreSQL:** Google sign-in and owner-only CMS access controlled by PostgreSQL Row Level Security. The migration is staged and must be verified before release.
 - **Google Workspace APIs:** Gmail API (`users.messages.send`) and Google Forms API (`forms.body`) with in-memory access token caching and user confirmation gates.
-- **AdSense Readiness:** Configurable ad-slot components visually separated from interactive tool controls; prepared for Google-certified CMP (IAB TCF v2.2).
+- **AdSense:** Approval, live ad serving and consent management have not been configured or verified.
 - **SEO & Core Web Vitals:** Pre-rendered HTML metadata for all public routes, dynamic `/sitemap.xml`, and `/robots.txt`.
 
 ## Getting Started
@@ -51,3 +51,4 @@ npm run build
 - [AdSense & CMP Setup](docs/ADSENSE.md)
 - [Operations & Cloud Run Runbook](docs/OPERATIONS.md)
 - [Known Limitations](docs/LIMITATIONS.md)
+- [Staged Firebase-to-Supabase migration](docs/SUPABASE_MIGRATION.md)

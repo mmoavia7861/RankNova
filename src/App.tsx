@@ -13,8 +13,8 @@ import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsPage } from './pages/TermsPage';
 import { DisclaimerPage } from './pages/DisclaimerPage';
 import { AdminPage } from './pages/AdminPage';
-import { auth } from './lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { supabase, isOwnerUser } from './lib/supabase';
+import type { User } from '@supabase/supabase-js';
 import { trackEvent } from './lib/analytics';
 
 // For project-hosted GitHub Pages, strip the /RankNova prefix when matching routes.
@@ -34,6 +34,7 @@ export default function App() {
     typeof window !== 'undefined' ? getCurrentRoute() : '/'
   );
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [ownerConfirmed, setOwnerConfirmed] = useState(false);
 
   // Synchronize browser history and route state
   useEffect(() => {
@@ -45,16 +46,27 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Firebase Auth state listener
+  // Supabase auth and owner status, confirmed against PostgreSQL RLS.
+  // No client-side email check grants administrative privileges.
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, user => {
+    let mounted = true;
+    const updateUser = async (user: User | null) => {
+      if (!mounted) return;
       setCurrentUser(user);
+      setOwnerConfirmed(false);
+      const confirmed = await isOwnerUser(user);
+      if (mounted) setOwnerConfirmed(confirmed);
+    };
+    if (!supabase) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Defer DB queries until after the auth callback to avoid auth lock contention.
+      Promise.resolve().then(() => updateUser(session?.user || null));
     });
-    return () => unsubscribe();
+    void supabase.auth.getUser().then(({ data }) => updateUser(data.user)).catch(() => updateUser(null));
+    return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
 
-  // Firestore is accessed only by features that need it.
-  // No unauthenticated startup request to a deliberately denied test document.
+  // PostgreSQL requests are made only by features that need them, after configuration.
 
   const navigate = (path: string) => {
     if (path !== currentPath) {
@@ -104,7 +116,7 @@ export default function App() {
       return <DisclaimerPage />;
     }
     if (currentPath === '/admin') {
-      return <AdminPage />;
+      return <AdminPage currentUser={currentUser} ownerConfirmed={ownerConfirmed} />;
     }
 
     // 404 Fallback
@@ -127,7 +139,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/70 text-slate-900 selection:bg-blue-100 selection:text-blue-900 font-sans antialiased">
-      <Navbar currentPath={currentPath} onNavigate={navigate} currentUser={currentUser} />
+      <Navbar currentPath={currentPath} onNavigate={navigate} currentUser={currentUser} ownerConfirmed={ownerConfirmed} />
       <main className="flex-1">{renderContent()}</main>
       <Footer onNavigate={navigate} />
     </div>
