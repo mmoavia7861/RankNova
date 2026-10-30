@@ -43,7 +43,32 @@ try {
   assert.ok((await page.locator('#root').locator('*').count()) > 1, 'The React root is blank after 5.5 seconds');
   assert.equal(errors.length, 0, 'Browser has uncaught errors');
   assert.ok((await page.locator('h1').count()) > 0, 'Home page heading missing');
-  console.log('PASS: RankNova home page renders successfully.');
+  console.log('PASS: RankNova preview home page renders successfully.');
+
+  // Diagnostic probe of the already-published GitHub Pages URL.
+  // The live deployment may differ from the local build if Pages Source is misconfigured.
+  const live = await browser.newPage({ viewport: { width: 1365, height: 900 } });
+  const liveErrors = [];
+  const liveFailures = [];
+  const assets = [];
+  live.on('pageerror', err => liveErrors.push(err.stack || err.message));
+  live.on('console', msg => { if (msg.type() === 'error') liveErrors.push('console: ' + msg.text()); });
+  live.on('requestfailed', req => liveFailures.push(req.url() + ' : ' + req.failure()?.errorText));
+  live.on('response', res => { if (res.status() >= 400) assets.push(res.status() + ' ' + res.url()); });
+  try {
+    const liveResponse = await live.goto('https://mmoavia7861.github.io/RankNova/', { waitUntil: 'domcontentloaded', timeout: 25000 });
+    await live.waitForTimeout(6500);
+    console.log('LIVE_SITE_STATUS', liveResponse?.status());
+    console.log('LIVE_ROOT_LENGTH', (await live.locator('#root').innerHTML()).length);
+    console.log('LIVE_MODULE_SCRIPTS', JSON.stringify(await live.locator('script[type="module"]').evaluateAll(nodes => nodes.map(n => n.src))));
+    console.log('LIVE_PAGE_ERRORS', JSON.stringify(liveErrors.slice(0, 30), null, 2));
+    console.log('LIVE_FAILED_REQUESTS', JSON.stringify(liveFailures.slice(0, 30), null, 2));
+    console.log('LIVE_NON_2XX_RESPONSES', JSON.stringify(assets.slice(0, 30), null, 2));
+    await live.screenshot({ path: 'browser-live-debug.png', fullPage: true });
+  } catch (error) {
+    console.log('LIVE_DIAGNOSTIC_FETCH_ERROR', String(error));
+  }
+
 } finally {
   await browser?.close();
   server.kill('SIGTERM');
