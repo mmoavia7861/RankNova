@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
 import { User as UserIcon, LogOut, Menu, X } from 'lucide-react';
-import { auth, isUserAdmin } from '../../lib/firebase';
-import { googleWorkspaceSignIn } from '../../lib/workspace';
-import { User, signOut } from 'firebase/auth';
+import { supabase, signInWithGoogle } from '../../lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 interface NavbarProps {
   currentPath: string;
   onNavigate: (path: string) => void;
   currentUser: User | null;
+  ownerConfirmed: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, currentUser }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, currentUser, ownerConfirmed }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const handleSignIn = async () => {
     setIsSigningIn(true);
     try {
-      await googleWorkspaceSignIn();
+      await signInWithGoogle();
     } catch (err) {
       console.error('Sign in failed:', err);
     } finally {
@@ -26,7 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, current
   };
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    await supabase?.auth.signOut();
   };
 
   const navLinks = [
@@ -36,7 +36,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, current
     { name: 'Guides', path: '/guides' },
   ];
 
-  const isAdmin = currentUser && isUserAdmin(currentUser.email);
+  const isAdmin = ownerConfirmed;
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/90 text-slate-800 shadow-xs">
@@ -96,17 +96,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, current
           <div className="hidden md:flex items-center gap-3">
             {currentUser ? (
               <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-full px-3 py-1 text-xs">
-                {currentUser.photoURL ? (
+                {currentUser.user_metadata?.avatar_url ? (
                   <img
-                    src={currentUser.photoURL}
-                    alt={currentUser.displayName || 'User'}
+                    src={currentUser.user_metadata?.avatar_url}
+                    alt={currentUser.user_metadata?.full_name || 'User'}
                     className="w-5 h-5 rounded-full object-cover ring-1 ring-slate-300"
                   />
                 ) : (
                   <UserIcon className="w-4 h-4 text-blue-600" />
                 )}
                 <span className="text-slate-700 font-medium max-w-[120px] truncate">
-                  {currentUser.displayName || currentUser.email}
+                  {currentUser.user_metadata?.full_name || currentUser.email}
                 </span>
                 <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded-full font-mono font-medium">
                   Connected
@@ -184,7 +184,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate, current
           <div className="pt-3 border-t border-slate-200">
             {currentUser ? (
               <div className="flex items-center justify-between py-2 text-sm text-slate-700">
-                <span className="truncate">{currentUser.displayName || currentUser.email}</span>
+                <span className="truncate">{currentUser.user_metadata?.full_name || currentUser.email}</span>
                 <button
                   onClick={handleSignOut}
                   className="text-rose-600 text-xs font-semibold px-2 py-1 rounded bg-rose-50 hover:bg-rose-100"
