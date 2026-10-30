@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Send, CheckCircle2, AlertTriangle, MessageSquare } from 'lucide-react';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { addDoc, collection } from 'firebase/firestore';
+import { sendFeedback } from '../lib/data';
 import { AdSlot } from '../components/layout/AdSlot';
 
 export const ContactPage: React.FC = () => {
@@ -24,13 +23,9 @@ export const ContactPage: React.FC = () => {
     setStatus(null);
 
     try {
-      const feedbackPath = 'feedback';
-      await addDoc(collection(db, feedbackPath), {
+      await sendFeedback({
         name: name.trim() || 'Anonymous User',
-        email: email.trim(),
-        subject: subject.trim(),
-        message: message.trim(),
-        createdAt: new Date().toISOString()
+        email: email.trim(), subject: subject.trim(), message: message.trim()
       });
 
       setStatus({
@@ -42,14 +37,10 @@ export const ContactPage: React.FC = () => {
       setMessage('');
     } catch (err) {
       console.error('Feedback submit error:', err);
-      try {
-        handleFirestoreError(err, OperationType.CREATE, 'feedback');
-      } catch (fErr: unknown) {
-        setStatus({
-          type: 'error',
-          text: 'Failed to record message in database. Please check your network connection.'
-        });
-      }
+      setStatus({
+        type: 'error',
+        text: 'Failed to save your message. Please try again later or contact the site owner.'
+      });
     } finally {
       setLoading(false);
     }
