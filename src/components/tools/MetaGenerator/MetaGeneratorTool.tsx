@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
   Copy,
@@ -54,6 +54,14 @@ export const MetaGeneratorTool: React.FC = () => {
       intent
     });
   }, [keyword, topic, brand, url, intent]);
+
+  // An edited keyword, topic or intent must not retain suggestions for a previous page.
+  useEffect(() => {
+    setSelectedTitle('');
+    setSelectedDesc('');
+    setGroundingData(null);
+    setGroundingError('');
+  }, [keyword, topic, brand, intent]);
 
   // Set default selected title & desc if not yet customized
   const currentTitle = keyword.trim() ? (selectedTitle || generatedResult.variants[0]?.title || '') : '';
