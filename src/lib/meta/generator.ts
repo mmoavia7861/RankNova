@@ -99,25 +99,31 @@ export function generateMetaSuggestions(params: {
 
   const primaryVariant = variants[0];
 
+  // Never output HTML-like tags from user input without escaping values.
+  const escapeHtml = (value: string): string => value.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const safeTitle = escapeHtml(primaryVariant.title);
+  const safeDesc = escapeHtml(primaryVariant.description);
+  const safeUrl = escapeHtml(url);
   const htmlSnippet = `<!-- Primary Meta Tags -->
-<title>${primaryVariant.title}</title>
-<meta name="title" content="${primaryVariant.title}" />
-<meta name="description" content="${primaryVariant.description}" />
-${url ? `<link rel="canonical" href="${url}" />` : ''}`;
+<title>${safeTitle}</title>
+<meta name="title" content="${safeTitle}" />
+<meta name="description" content="${safeDesc}" />
+${safeUrl ? `<link rel="canonical" href="${safeUrl}" />` : ''}`;
 
   const ogSnippet = `<!-- Open Graph / Facebook -->
 <meta property="og:type" content="website" />
-${url ? `<meta property="og:url" content="${url}" />` : ''}
-<meta property="og:title" content="${primaryVariant.title}" />
-<meta property="og:description" content="${primaryVariant.description}" />
-<meta property="og:image" content="https://example.com/social-share.jpg" />
+${safeUrl ? `<meta property="og:url" content="${safeUrl}" />` : ''}
+<meta property="og:title" content="${safeTitle}" />
+<meta property="og:description" content="${safeDesc}" />
+<!-- Supply your own real Open Graph image URL before publishing -->
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image" />
-${url ? `<meta name="twitter:url" content="${url}" />` : ''}
-<meta name="twitter:title" content="${primaryVariant.title}" />
-<meta name="twitter:description" content="${primaryVariant.description}" />
-<meta name="twitter:image" content="https://example.com/social-share.jpg" />`;
+${safeUrl ? `<meta name="twitter:url" content="${safeUrl}" />` : ''}
+<meta name="twitter:title" content="${safeTitle}" />
+<meta name="twitter:description" content="${safeDesc}" />
+<!-- Supply your own real Twitter image URL before publishing -->`;
 
   return {
     variants,
