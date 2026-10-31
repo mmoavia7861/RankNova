@@ -50,6 +50,8 @@ jobs:
         run: npm --prefix functions run build
       - name: Test Firebase Functions configuration
         run: npm --prefix functions test
+      - name: Test Firebase HTTP API, CORS and direct routes
+        run: timeout 45s npm --prefix functions run test:http
       - name: Build Cloud Run production container
         run: docker build --tag ranknova-api-smoke .
       - name: Smoke-test running API, CORS and SSRF protection

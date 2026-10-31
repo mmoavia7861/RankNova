@@ -10,7 +10,7 @@ const staticAllowedOrigins = new Set([
 
 // Add actual production origins after deployment via Firebase environment settings.
 // Never allow arbitrary Origin values for public website audit endpoints.
-function allowedOrigin(origin: string | undefined, host: string | undefined): boolean {
+function allowedOrigin(origin: string | undefined): boolean {
   if (!origin) return true; // curl, uptime monitoring, server-side requests
   try {
     const parsed = new URL(origin);
@@ -18,11 +18,9 @@ function allowedOrigin(origin: string | undefined, host: string | undefined): bo
       return false;
     }
     const configured = (process.env.RANKNOVA_ALLOWED_ORIGINS || '').split(',').map(v => v.trim());
-    const fromHosting = parsed.hostname.endsWith('.web.app') || parsed.hostname.endsWith('.firebaseapp.com');
-    const sameOrigin = parsed.host === host;
-    // Only trust Firebase Hosting origins for *this project's* known ID, not every web.app website.
+    // Only the RankNova project's exact Firebase Hosting origins, never all web.app sites.
     const ownHosting = ['gen-lang-client-0081440357.web.app', 'gen-lang-client-0081440357.firebaseapp.com'].includes(parsed.host);
-    return staticAllowedOrigins.has(origin) || configured.includes(origin) || (sameOrigin && ownHosting);
+    return staticAllowedOrigins.has(origin) || configured.includes(origin) || ownHosting;
   } catch {
     return false;
   }
@@ -30,7 +28,7 @@ function allowedOrigin(origin: string | undefined, host: string | undefined): bo
 
 function cors(req: any, res: any): boolean {
   const origin = req.headers.origin as string | undefined;
-  if (!allowedOrigin(origin, req.headers.host as string | undefined)) {
+  if (!allowedOrigin(origin)) {
     res.status(403).json({ error: 'Origin is not allowed.' });
     return false;
   }
@@ -79,8 +77,12 @@ export const ranknovaApi = onRequest({
   res.setHeader('Cache-Control', 'no-store');
   if (!cors(req, res)) return;
 
-  // Firebase Hosting passes /api/... directly through to this handler.
-  const path = new URL(req.url || '/', 'https://firebase.invalid').pathname;
+  // Hosting rewrites pass /api/...; Firebase's direct HTTPS URL is
+  // /ranknovaApi/api/... from outside. Normalize both forms defensively.
+  const rawPath = new URL(req.url || '/', 'https://firebase.invalid').pathname;
+  const path = rawPath.startsWith('/ranknovaApi/api/')
+    ? rawPath.slice('/ranknovaApi'.length)
+    : rawPath;
   if (path === '/api/health' && req.method === 'GET') {
     res.status(200).json({ status: 'ok', service: 'ranknova-firebase-audit', backend: 'firebase-functions' });
     return;

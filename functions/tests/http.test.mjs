@@ -15,7 +15,23 @@ async function withServer(run) {
     if (req.headers['content-type']?.includes('application/json') && raw) {
       req.body = JSON.parse(raw);
     }
-    await ranknovaApi(req, res);
+    // Firebase's real onRequest runtime supplies Express response methods.
+    // Node's raw http.ServerResponse in this test does not, so emulate them.
+    res.status = code => { res.statusCode = code; return res; };
+    res.json = payload => {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify(payload));
+      return res;
+    };
+    try {
+      await ranknovaApi(req, res);
+    } catch (error) {
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.end(JSON.stringify({ error: 'Test handler failure' }));
+      }
+      throw error;
+    }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   try {
@@ -56,5 +72,46 @@ test('Firebase HTTP function rejects internal URLs without fetching them', async
     });
     assert.equal(result.status, 400);
     assert.match((await result.json()).error, /internal|localhost|forbidden/i);
+  });
+});
+
+
+test('Direct Firebase HTTPS function path returns health and permits GitHub Pages CORS', async () => {
+  await withServer(async base => {
+    const result = await fetch(base + '/ranknovaApi/api/health', {
+      signal: AbortSignal.timeout(5000),
+      headers: { Origin: 'https://mmoavia7861.github.io' }
+    });
+    assert.equal(result.status, 200);
+    assert.equal(result.headers.get('access-control-allow-origin'), 'https://mmoavia7861.github.io');
+    assert.equal((await result.json()).status, 'ok');
+  });
+});
+
+test('Project-specific Firebase Hosting origin is permitted but other Hosting origins are denied', async () => {
+  await withServer(async base => {
+    const own = await fetch(base + '/api/health', {
+      headers: { Origin: 'https://gen-lang-client-0081440357.web.app' }
+    });
+    assert.equal(own.status, 200);
+    assert.equal(own.headers.get('access-control-allow-origin'), 'https://gen-lang-client-0081440357.web.app');
+    const other = await fetch(base + '/api/health', {
+      headers: { Origin: 'https://unrelated.firebaseapp.com' }
+    });
+    assert.equal(other.status, 403);
+  });
+});
+
+test('Firebase direct function supports browser OPTIONS preflight', async () => {
+  await withServer(async base => {
+    const response = await fetch(base + '/ranknovaApi/api/audit', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://mmoavia7861.github.io',
+        'Access-Control-Request-Method': 'POST'
+      }
+    });
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get('access-control-allow-origin'), 'https://mmoavia7861.github.io');
   });
 });

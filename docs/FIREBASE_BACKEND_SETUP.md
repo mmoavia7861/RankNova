@@ -1,77 +1,84 @@
-# Deploy RankNova Website SEO Checker with Firebase
+# RankNova: deploy JUST the SEO Audit API to Firebase Cloud Functions
 
-This config adds a **real Firebase Cloud Functions (2nd gen) backend** running the existing `runSeoAudit` implementation. Firebase Hosting routes `/api/health` and `/api/audit` to `ranknovaApi`. The other two public SEO generators remain browser-based. Optional Gemini live-search endpoint explicitly returns 503 until configured.
+**Goal:** Enable direct URL audits on the existing GitHub Pages site. Do NOT redeploy Firebase Hosting, reset Firestore, migrate Supabase, or alter owner login.
 
-**IMPORTANT:** GitHub code changes cannot independently deploy to your Firebase account. You must sign into the Google account with edit permissions for YOUR Firebase project. Firebase Cloud Functions requires the Blaze pay-as-you-go plan, which may incur charges. Set budget alerts, monitor costs, and apply bot protections before opening the public service at scale.
+**Existing Firebase project:** `gen-lang-client-0081440357` (Default Gemini Project). The function `ranknovaApi` and its codebase `ranknova-api` already exist in this GitHub repository. Cloud Functions v2 uses Node 22, 512 MiB, max 2 instances and a 30-second timeout.
 
-## Choose the correct Firebase project first
+## Prerequisite: enable billing on THIS Firebase project
 
-This existing frontend currently references Firebase project `gen-lang-client-0081440357` and a separate named Firestore database. Do **not** create a different project accidentally or overwrite its live database/rules. Confirm in the Firebase console that you own or can administer that project. If you prefer another project, first update the frontend configuration deliberately.
+Go to https://console.firebase.google.com/project/gen-lang-client-0081440357/overview and upgrade to **Blaze**. The user's previous Google Cloud Shell error `BILLING_ACCOUNT_NOT_FOUND` is an actual blocker. **Cloud Functions cannot be deployed from Spark (free) without a linked billing account**. Blaze includes certain no-cost usage allowances but can incur charges. Budget alerts alone do not stop spend. Verify the correct Google Cloud project, budget alerts and available Cloud Run functions spend-cap controls.
 
-## Setup in a trusted local terminal or Cloud Shell
+## Cloud Shell (existing clone; no re-clone)
 
-1. Ensure Node.js 22 and the Firebase CLI are available.
-2. Authenticate interactively using `firebase login` (never share account password).
-3. Choose and verify the correct project and upgrade to Blaze as required.
-4. In your checkout:
+The user already cloned the repository into `~/RankNova/RankNova` (as shown by their Cloud Shell screenshot). In the existing Cloud Shell terminal, after billing is linked:
 
 ```bash
-git clone https://github.com/mmoavia7861/RankNova.git
-cd RankNova
-npm install
-npm --prefix functions install
+cd ~/RankNova/RankNova
+git pull --ff-only origin main
+gcloud config set project gen-lang-client-0081440357
+
+node --version
+# Node.js 22 or a currently supported Firebase CLI version runtime is needed.
+
+npm --prefix functions install --no-audit --no-fund
 npm --prefix functions run build
 npm --prefix functions test
-npm run build
-firebase projects:list
+npm --prefix functions run test:http
+
+npx --yes firebase-tools@latest login --no-localhost
+npx --yes firebase-tools@latest projects:list
+
+# IMPORTANT: only deploy THIS codebase. No Firebase Hosting or Firestore rules.
+npx --yes firebase-tools@latest deploy --only functions:ranknova-api --project gen-lang-client-0081440357
 ```
 
-To allow a custom domain later, add the exact HTTPS frontend domains to Firebase function configuration as environment variables. Create `functions/.env` on YOUR machine (gitignored):
+If `firebase login` reports you are already signed in, `projects:list` should display the correct project. Never copy OAuth login tokens, passwords, billing information, or secrets into chat. If Cloud Shell asks to enable Cloud Run, Cloud Build, Artifact Registry or Eventarc APIs, confirm the correct project and billing first.
 
+## Verify real function, not dummy data
+
+The Firebase CLI prints an exact public **Function URL**, typically of the form:
+`https://asia-south1-gen-lang-client-0081440357.cloudfunctions.net/ranknovaApi`
+
+**The example above must NOT be assumed live:** use the actual URL printed by the deployed function.
+
+Test with a browser:
+```text
+YOUR_EXACT_FUNCTION_URL/api/health
 ```
-RANKNOVA_ALLOWED_ORIGINS=https://mmoavia7861.github.io,https://YOUR_PROJECT_ID.web.app,https://YOUR_PROJECT_ID.firebaseapp.com
-```
 
-**Do not put credentials, API keys or private tokens in this file or into `VITE_*` frontend variables.**
+Expected response: JSON containing `"status": "ok"` and `"service": "ranknova-firebase-audit"`.
 
-Deploy **only this app's functions codebase and Hosting** to your verified project:
-
+Then in Cloud Shell, replace `YOUR_EXACT_FUNCTION_URL`:
 ```bash
-firebase deploy --only functions:ranknova-api,hosting --project YOUR_PROJECT_ID
-```
-
-The deployment should print a hosting URL like `https://YOUR_PROJECT_ID.web.app`. Confirm:
-
-```bash
-curl -i https://YOUR_PROJECT_ID.web.app/api/health
-curl -i -X POST https://YOUR_PROJECT_ID.web.app/api/audit \
+FUNCTION_URL='YOUR_EXACT_FUNCTION_URL'
+curl -i "$FUNCTION_URL/api/health"
+curl -i -X POST "$FUNCTION_URL/api/audit" \
   -H 'Origin: https://mmoavia7861.github.io' \
   -H 'Content-Type: application/json' \
   -d '{"url":"https://example.com"}'
 ```
 
-Expect an actual report with numeric `score`, a `checks` array and timestamp. Test `http://127.0.0.1/` as an input and confirm that the server refuses it. Check rate limits and failed request messages.
+The second command must produce actual audit details (`checks`, `score`) or a clear error from the remote site. Verify a target such as `http://127.0.0.1/` is rejected. Functions rate limits are per instance and not globally enforced; add robust abuse protection before significant public traffic.
 
-## Keep GitHub Pages for your current public frontend (optional)
+## Connect Firebase function to RankNova GitHub Pages
 
-After Firebase Hosting + Functions is deployed and the health endpoint works, go to:
+Open https://github.com/mmoavia7861/RankNova/settings/variables/actions
 
-[RankNova GitHub Actions Variables](https://github.com/mmoavia7861/RankNova/settings/variables/actions)
+Add/update **repository variable** `RANKNOVA_API_BASE_URL` to the **exact printed Function URL**, including `/ranknovaApi`. Do not append `/api`, `/health` or `/audit`. It is a public endpoint, NOT a secret.
 
-Create or update the repository variable:
-- **Name:** `RANKNOVA_API_BASE_URL`
-- **Value:** `https://YOUR_PROJECT_ID.web.app`
+The frontend now accepts this direct Firebase Functions URL as well as normal HTTPS API origins. Existing Vite build workflow passes `RANKNOVA_API_BASE_URL` as `VITE_API_BASE_URL`.
 
-Do NOT add `/api`, `/api/audit` or trailing paths. Then manually rerun **Deploy RankNova frontend to GitHub Pages** under GitHub Actions so Vite bakes that public URL into the frontend. Once the real API health check succeeds from the browser, the SEO Audit button unlocks. No score is shown before a real audit.
+Open https://github.com/mmoavia7861/RankNova/actions/workflows/deploy-pages.yml and choose **Run workflow** on `main`. Then visit https://mmoavia7861.github.io/RankNova/tools/seo-audit and test `https://example.com`. If necessary, hard refresh.
 
-You can alternatively serve the entire frontend on Firebase Hosting at `https://YOUR_PROJECT_ID.web.app` and skip GitHub Pages. The API works on the same origin there and can be connected to your eventual custom domain.
+**Do not add Cloud Function keys or admin credentials to GitHub variables or the frontend.** This function is intended as a *public, rate-limited audit API*.
 
-## What stays separate
+## Why function-only?
 
-- **Firestore security rules:** Existing `firestore.rules` target owner-only CMS/feedback in a *named* database. This `firebase.json` intentionally does not auto-deploy Firestore rules, preventing accidental overwrite of another database's rules. Deploy only after reviewing the target database and Firebase rules syntax.
-- **Contact form:** Currently uses Firestore directly. Needs abuse protection and verification.
-- **Admin authentication:** Must be tested with authorized owner account and unrelated accounts, and the authorized domain configured in Firebase Auth.
-- **SEO / AdSense:** Firebase Hosting's SPA fallback may not deliver individually server-rendered HTML on deep links; review indexing/SSR before launch. AdSense approval is not guaranteed.
-- **Security & billing:** The Function is public because anyone should be able to check a website without signing in. Instance-limited in-memory rate limits are not globally enforced. Deploy additional verified anti-abuse/App Check or WAF controls, DNS-rebinding-safe outbound networking, cost monitoring and adequate security tests before public high-traffic use.
+The Firebase project is called "Default Gemini Project" and may already host other content. Deploying `hosting` could change the site's content/rewrites. This runbook deploys only `functions:ranknova-api`, preserves GitHub Pages, avoids touching Firestore collections/rules, and gives a direct URL to connect.
 
-**At this stage, successful CI is not evidence of deployment to your account or a production-safe public release.**
+## Limitations
+
+- Firebase Blaze billing is **mandatory** for deployment.
+- Cloud Functions return an audit for public HTML that the server can actually fetch, not for protected sites, blocked networks or pages requiring JavaScript rendering.
+- A successful build/test does **not** prove that an authenticated deployment occurred. Verify the actual HTTPS health response.
+- Optional `/api/search-grounding` remains unconfigured on this Firebase function.

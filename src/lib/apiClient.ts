@@ -1,7 +1,11 @@
 /**
  * Production API endpoint for static GitHub Pages builds.
- * VITE_API_BASE_URL is a public ORIGIN (not a secret), e.g. https://ranknova-api-xyz.run.app
- * Cloud Run full-stack pages use same-origin API calls when no override is set.
+ * VITE_API_BASE_URL is a public HTTPS URL (NOT a secret).
+ * It can be a normal API origin or the exact Firebase HTTPS Function URL
+ * ending in /ranknovaApi returned by Firebase CLI, e.g.
+ * https://asia-south1-PROJECT.cloudfunctions.net/ranknovaApi
+ * We never accept arbitrary paths, queries or credentials.
+ * Full-stack builds can use same-origin API calls when no override is set.
  */
 const configured = (import.meta.env.VITE_API_BASE_URL || '').trim();
 
@@ -11,8 +15,13 @@ function normalizeApiBase(raw: string): string {
     const url = new URL(raw);
     const localDevelopment = url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname);
     if (url.protocol !== 'https:' && !localDevelopment) return '';
-    if (url.username || url.password || url.search || url.hash || url.pathname !== '/') return '';
-    return url.origin;
+    if (url.username || url.password || url.search || url.hash) return '';
+    if (url.pathname === '/') return url.origin;
+    // Firebase HTTPS Functions include the function name in the service URL.
+    // The browser appends /api/health and /api/audit to this prefix.
+    const isFirebaseFunction = url.hostname.endsWith('.cloudfunctions.net') &&
+      url.pathname === '/ranknovaApi';
+    return isFirebaseFunction ? url.origin + url.pathname : '';
   } catch {
     return '';
   }
