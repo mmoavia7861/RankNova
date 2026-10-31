@@ -165,7 +165,7 @@ export const SeoAuditTool: React.FC = () => {
     if (!report) return;
     const summaryText = `RankNova SEO Audit: ${report.targetUrl}
 Score: ${report.score}/100 (Grade ${report.grade})
-Status: ${report.statusCode} • Response Time: ${report.fetchDurationMs}ms
+${isLocalReport ? 'Mode: Local HTML source (HTTP response was not measured)' : `Status: ${report.statusCode} • Fetch Time: ${report.fetchDurationMs}ms`}
 Passed: ${report.summary.passed} | Warnings: ${report.summary.warnings} | Errors: ${report.summary.errors}
 
 Key Action Items:
@@ -434,7 +434,7 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
             </div>
 
             {/* Google Workspace Integration Bar */}
-            <div className="pt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50/80 -mx-6 -mb-6 p-6 rounded-b-2xl border-t border-slate-100">
+            {!isLocalReport && <div className="pt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50/80 -mx-6 -mb-6 p-6 rounded-b-2xl border-t border-slate-100">
               <div className="space-y-0.5">
                 <span className="text-xs font-semibold text-slate-900 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-blue-600" />
@@ -467,12 +467,12 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
                   <span>Client Intake Form</span>
                 </button>
               </div>
-            </div>
+            </div>}
           </div>
 
           {/* Category Breakdown Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {report.categories.map((cat) => (
+            {report.categories.filter(cat => report.checks.some(check => check.category === cat.category)).map((cat) => (
               <button
                 key={cat.category}
                 onClick={() => setSelectedCategory(selectedCategory === cat.category ? 'all' : cat.category)}
