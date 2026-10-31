@@ -46,20 +46,20 @@ export function validateSchemaInput(type: SchemaType, data: Record<string, any>)
       notices.push({ field: 'image', type: 'error', message: 'Image must be a valid URL.' });
     }
     if (data.price?.trim()) {
-      const priceNum = Number.parseFloat(data.price);
-      if (Number.isNaN(priceNum) || priceNum < 0) {
+      const priceNum = Number(data.price);
+      if (!/^\d+(?:\.\d{1,2})?$/.test(data.price.trim()) || !Number.isFinite(priceNum) || priceNum < 0) {
         notices.push({ field: 'price', type: 'error', message: 'Price must be a valid positive number.' });
       }
     } else {
       notices.push({ field: 'price', type: 'warning', message: 'Price is recommended to qualify for rich product snippets in Google Search.' });
     }
     if (data.includeRating) {
-      const rating = Number.parseFloat(data.ratingValue);
-      const count = Number.parseInt(data.reviewCount, 10);
-      if (Number.isNaN(rating) || rating < 1 || rating > 5) {
+      const rating = Number(data.ratingValue);
+      const count = Number(data.reviewCount);
+      if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
         notices.push({ field: 'ratingValue', type: 'error', message: 'Rating value must be between 1.0 and 5.0.' });
       }
-      if (Number.isNaN(count) || count < 1) {
+      if (!Number.isInteger(count) || count < 1) {
         notices.push({ field: 'reviewCount', type: 'error', message: 'Review count must be at least 1.' });
       }
     }

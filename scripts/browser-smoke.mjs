@@ -73,6 +73,37 @@ try {
   assert.ok((await page.locator('#root').locator('*').count()) > 1, 'The local production build React root is blank');
   assert.equal(errors.length, 0, 'Local browser has uncaught errors');
   assert.ok((await page.locator('h1').count()) > 0, 'Home page heading missing');
+  // Functional smoke tests for the three SEO tools, not just homepage rendering.
+  await page.getByRole('button', { name: 'SEO Audit', exact: true }).first().click();
+  const offline = page.locator('section[aria-labelledby="html-audit-heading"]');
+  assert.ok(await offline.isVisible(), 'Offline HTML audit panel missing');
+  const sampleHtml = '<!doctype html><html lang="en"><head><title>RankNova SEO Example Page</title><meta name="description" content="A descriptive page to verify the local audit reports genuine metadata, canonical settings, language and image alt attributes accurately."><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="canonical" href="https://example.com/"></head><body><h1>RankNova example page</h1><img src="x.png" alt="Example image"></body></html>';
+  await offline.locator('textarea').fill(sampleHtml);
+  await offline.getByRole('button', { name: 'Analyze HTML Source' }).click();
+  assert.ok(await page.getByText('Local HTML source').isVisible(), 'Offline audit did not produce a local report');
+  assert.ok(await page.getByText('RankNova SEO Example Page', { exact: false }).count() > 0, 'Actual source metadata not audited');
+  assert.ok(!(await page.getByText('HTTP 200 OK').count()), 'Fabricated HTTP response displayed');
+  console.log('TOOL_PASS: SEO Audit real HTML source analysis');
+
+  await page.getByRole('button', { name: 'Meta & SERP', exact: true }).first().click();
+  await page.getByPlaceholder('e.g., website seo checker').fill('ranknova browser tools');
+  assert.ok(await page.getByText('Suggested Title Tags (5 Styles)').isVisible(), 'Meta Generator returned no suggestions');
+  assert.ok((await page.locator('code').allTextContents()).some(t => t.includes('<title>')), 'Meta Generator output missing title tag');
+  console.log('TOOL_PASS: Meta Generator live suggestions and HTML output');
+
+  await page.getByRole('button', { name: 'Schema JSON-LD', exact: true }).first().click();
+  const schemaCopy = page.getByRole('button', { name: 'Copy Script' });
+  assert.ok(await schemaCopy.isDisabled(), 'Schema Generator allows invalid empty schema export');
+  await page.locator('input[type="text"]').first().fill('RankNova Schema Test Article');
+  assert.ok(await schemaCopy.isEnabled(), 'Schema Generator did not accept a valid article title');
+  assert.ok((await page.locator('pre').allTextContents()).some(t => t.includes('RankNova Schema Test Article')), 'Schema JSON-LD did not contain entered title');
+  console.log('TOOL_PASS: Schema Generator validates inputs and generates JSON-LD');
+
+  console.log('TOOLS_FAILED_RESPONSES', JSON.stringify(responses));
+  console.log('TOOLS_FAILED_REQUESTS', JSON.stringify(failed));
+  console.log('TOOLS_BROWSER_ERRORS', JSON.stringify(errors));
+  assert.equal(errors.length, 0, 'Browser errors during tool interactions: ' + JSON.stringify(errors));
+  console.log('PASS: all three RankNova SEO tool functional smoke tests.');
   console.log('PASS: RankNova local production build renders with /RankNova/ static hosting.');
 } finally {
   await browser?.close();

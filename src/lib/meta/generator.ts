@@ -49,40 +49,28 @@ export function generateMetaSuggestions(params: {
   const capKw = kw.charAt(0).toUpperCase() + kw.slice(1);
   const brandSuffix = brand ? ` | ${brand}` : '';
 
-  const currentYear = new Date().getFullYear();
-
-  // 5 distinct headline styles
+  // Build practical templates from actual user-provided keyword, purpose and
+  // search intent, without inventing reviews, rankings or product guarantees.
+  const detail = (topic || kw).replace(/\s+/g, ' ').slice(0, 110);
+  const intent = params.intent || 'informational';
+  const verb = intent === 'transactional' ? 'Get Started with'
+    : intent === 'commercial' ? 'Compare and Explore'
+    : intent === 'navigational' ? 'Find'
+    : 'Understand';
   const titleOptions: { title: string; style: MetaVariant['style'] }[] = [
-    {
-      title: `${capKw}: Complete Guide & Best Practices (${currentYear})${brandSuffix}`,
-      style: 'Comprehensive Guide'
-    },
-    {
-      title: `How to Master ${capKw} - Proven Step-by-Step Tips${brandSuffix}`,
-      style: 'Action & Benefit'
-    },
-    {
-      title: `${capKw} Explained: Everything You Need to Know${brandSuffix}`,
-      style: 'Direct & Definitive'
-    },
-    {
-      title: brand ? `${brand} ${capKw} - Fast, Reliable & Actionable` : `Top ${capKw} Strategies for Rapid Results (${currentYear})`,
-      style: 'Brand-First'
-    },
-    {
-      title: `Looking for ${capKw}? Here Is What Actually Works${brandSuffix}`,
-      style: 'Question & Solution'
-    }
+    { title: capKw + ': Key Information' + brandSuffix, style: 'Direct & Definitive' },
+    { title: verb + ' ' + capKw + brandSuffix, style: 'Action & Benefit' },
+    { title: capKw + ': Practical Guide' + brandSuffix, style: 'Comprehensive Guide' },
+    { title: brand ? brand + ' | ' + capKw : capKw + ': Overview and Options', style: 'Brand-First' },
+    { title: 'What Should You Know About ' + capKw + '?' + brandSuffix, style: 'Question & Solution' }
   ];
 
   const descOptions = [
-    `Explore essential ${kw} tips, key strategies, and actionable takeaways in this comprehensive breakdown. Learn how to optimize results today.`,
-    `Discover how to effectively implement ${kw}. Follow proven techniques to boost rankings, increase visibility, and drive measurable growth.`,
-    `Master ${kw} with our authoritative ${currentYear} overview. Find expert guidance, practical examples, and step-by-step instructions.`,
-    brand
-      ? `Get trusted ${kw} solutions from ${brand}. Improve your workflows and discover the highest-impact strategies for success.`
-      : `Looking to succeed with ${kw}? Review clear guidance, avoid common pitfalls, and elevate your performance starting now.`,
-    `Everything you need to know about ${kw}. Read the detailed breakdown, compare key approaches, and make informed decisions.`
+    'Explore ' + kw + '. ' + detail + '. Learn what matters and review useful next steps.',
+    verb + ' ' + kw + '. ' + detail + '. Find relevant information and make informed choices.',
+    'Read a practical overview of ' + kw + '. ' + detail + '. Understand the essentials.',
+    (brand ? 'Explore ' + kw + ' with ' + brand + '. ' : 'Explore the options for ' + kw + '. ') + detail + '.',
+    'Questions about ' + kw + '? ' + detail + '. Review the details and common considerations.'
   ];
 
   const variants: MetaVariant[] = titleOptions.map((opt, i) => {
@@ -99,25 +87,31 @@ export function generateMetaSuggestions(params: {
 
   const primaryVariant = variants[0];
 
+  // Never output HTML-like tags from user input without escaping values.
+  const escapeHtml = (value: string): string => value.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const safeTitle = escapeHtml(primaryVariant.title);
+  const safeDesc = escapeHtml(primaryVariant.description);
+  const safeUrl = escapeHtml(url);
   const htmlSnippet = `<!-- Primary Meta Tags -->
-<title>${primaryVariant.title}</title>
-<meta name="title" content="${primaryVariant.title}" />
-<meta name="description" content="${primaryVariant.description}" />
-${url ? `<link rel="canonical" href="${url}" />` : ''}`;
+<title>${safeTitle}</title>
+<meta name="title" content="${safeTitle}" />
+<meta name="description" content="${safeDesc}" />
+${safeUrl ? `<link rel="canonical" href="${safeUrl}" />` : ''}`;
 
   const ogSnippet = `<!-- Open Graph / Facebook -->
 <meta property="og:type" content="website" />
-${url ? `<meta property="og:url" content="${url}" />` : ''}
-<meta property="og:title" content="${primaryVariant.title}" />
-<meta property="og:description" content="${primaryVariant.description}" />
-<meta property="og:image" content="https://example.com/social-share.jpg" />
+${safeUrl ? `<meta property="og:url" content="${safeUrl}" />` : ''}
+<meta property="og:title" content="${safeTitle}" />
+<meta property="og:description" content="${safeDesc}" />
+<!-- Supply your own real Open Graph image URL before publishing -->
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image" />
-${url ? `<meta name="twitter:url" content="${url}" />` : ''}
-<meta name="twitter:title" content="${primaryVariant.title}" />
-<meta name="twitter:description" content="${primaryVariant.description}" />
-<meta name="twitter:image" content="https://example.com/social-share.jpg" />`;
+${safeUrl ? `<meta name="twitter:url" content="${safeUrl}" />` : ''}
+<meta name="twitter:title" content="${safeTitle}" />
+<meta name="twitter:description" content="${safeDesc}" />
+<!-- Supply your own real Twitter image URL before publishing -->`;
 
   return {
     variants,
