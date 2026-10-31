@@ -10,7 +10,7 @@ const staticAllowedOrigins = new Set([
 
 // Add actual production origins after deployment via Firebase environment settings.
 // Never allow arbitrary Origin values for public website audit endpoints.
-function allowedOrigin(origin: string | undefined, host: string | undefined): boolean {
+function allowedOrigin(origin: string | undefined): boolean {
   if (!origin) return true; // curl, uptime monitoring, server-side requests
   try {
     const parsed = new URL(origin);
@@ -28,7 +28,7 @@ function allowedOrigin(origin: string | undefined, host: string | undefined): bo
 
 function cors(req: any, res: any): boolean {
   const origin = req.headers.origin as string | undefined;
-  if (!allowedOrigin(origin, req.headers.host as string | undefined)) {
+  if (!allowedOrigin(origin)) {
     res.status(403).json({ error: 'Origin is not allowed.' });
     return false;
   }
