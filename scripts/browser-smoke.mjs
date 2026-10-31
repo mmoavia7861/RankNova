@@ -99,6 +99,9 @@ try {
   assert.ok((await page.locator('pre').allTextContents()).some(t => t.includes('RankNova Schema Test Article')), 'Schema JSON-LD did not contain entered title');
   console.log('TOOL_PASS: Schema Generator validates inputs and generates JSON-LD');
 
+  console.log('TOOLS_FAILED_RESPONSES', JSON.stringify(responses));
+  console.log('TOOLS_FAILED_REQUESTS', JSON.stringify(failed));
+  console.log('TOOLS_BROWSER_ERRORS', JSON.stringify(errors));
   assert.equal(errors.length, 0, 'Browser errors during tool interactions: ' + JSON.stringify(errors));
   console.log('PASS: all three RankNova SEO tool functional smoke tests.');
   console.log('PASS: RankNova local production build renders with /RankNova/ static hosting.');
