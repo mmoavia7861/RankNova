@@ -15,7 +15,23 @@ async function withServer(run) {
     if (req.headers['content-type']?.includes('application/json') && raw) {
       req.body = JSON.parse(raw);
     }
-    await ranknovaApi(req, res);
+    // Firebase's real onRequest runtime supplies Express response methods.
+    // Node's raw http.ServerResponse in this test does not, so emulate them.
+    res.status = code => { res.statusCode = code; return res; };
+    res.json = payload => {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify(payload));
+      return res;
+    };
+    try {
+      await ranknovaApi(req, res);
+    } catch (error) {
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.end(JSON.stringify({ error: 'Test handler failure' }));
+      }
+      throw error;
+    }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   try {
