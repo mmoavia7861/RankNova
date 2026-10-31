@@ -18,6 +18,7 @@ import {
   Save
 } from 'lucide-react';
 import { AuditReportData } from '../../../lib/audit/rules';
+import { auditLocalHtml } from '../../../lib/audit/htmlAudit';
 import { trackEvent, sanitizeUrlForAnalytics } from '../../../lib/analytics';
 import { WorkspaceGmailModal } from '../../workspace/WorkspaceGmailModal';
 import { WorkspaceKeepModal } from '../../workspace/WorkspaceKeepModal';
@@ -29,6 +30,9 @@ import { API_CONFIGURED, apiEndpoint, checkApiHealth } from '../../../lib/apiCli
 
 export const SeoAuditTool: React.FC = () => {
   const [urlInput, setUrlInput] = useState('');
+  const [localHtml, setLocalHtml] = useState('');
+  const [localFileName, setLocalFileName] = useState('pasted-page.html');
+  const [isLocalReport, setIsLocalReport] = useState(false);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<AuditReportData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +82,7 @@ export const SeoAuditTool: React.FC = () => {
     setLoading(true);
     setError(null);
     setReport(null);
+    setIsLocalReport(false);
     setSavedToCloud(false);
 
     trackEvent('audit_started', { domain: sanitizeUrlForAnalytics(target) });
@@ -119,6 +124,37 @@ export const SeoAuditTool: React.FC = () => {
     }
   };
 
+  const handleLocalHtmlAudit = () => {
+    try {
+      setError(null);
+      const result = auditLocalHtml(localHtml, localFileName);
+      setReport(result);
+      setIsLocalReport(true);
+      setSelectedCategory('all');
+      setSelectedStatus('all');
+      setSavedToCloud(false);
+    } catch (err) {
+      setReport(null);
+      setError(err instanceof Error ? err.message : 'Could not analyze this HTML document.');
+    }
+  };
+
+  const handleLocalFile = async (file?: File) => {
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError('File is too large. Please choose an HTML file under 2 MB.');
+      return;
+    }
+    try {
+      const raw = await file.text();
+      setLocalHtml(raw);
+      setLocalFileName(file.name);
+      setError(null);
+    } catch {
+      setError('File could not be read. Try copying its HTML into the text box.');
+    }
+  };
+
   const handleCopySnippet = (snippet: string, checkId: string) => {
     navigator.clipboard.writeText(snippet);
     setCopiedSnippetId(checkId);
@@ -152,7 +188,8 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ranknova-seo-audit-${new URL(report.targetUrl).hostname}-${Date.now()}.json`;
+    const safeLabel = isLocalReport ? 'local-html' : (() => { try { return new URL(report.targetUrl).hostname; } catch { return 'website'; } })();
+    a.download = `ranknova-seo-audit-${safeLabel}-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     trackEvent('report_downloaded', { type: 'json_download' });
@@ -196,10 +233,10 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
       {apiUnavailable && (
         <div role="status" className="max-w-3xl mx-auto rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
           {!API_CONFIGURED
-            ? 'SEO Audit requires a connected API backend. The site owner has not configured the Cloud Run URL yet; live audits are temporarily unavailable.'
+            ? 'Live URL checks require an API server, which is not connected yet. A real HTML-source audit is available below and works without a server.'
             : apiStatus === 'checking'
             ? 'Checking connection to the real SEO audit server...'
-            : 'SEO Audit server is currently unavailable. No sample scores or fabricated results will be displayed.'}
+            : 'Live URL server is temporarily unavailable. HTML-source audits below still work without a server.'}
           {API_CONFIGURED && apiStatus === 'offline' && (
             <button type="button" className="ml-2 underline font-semibold" onClick={() => {
               setApiStatus('checking');
@@ -283,6 +320,34 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
         </div>
       </div>
 
+      {/* Local source analysis never contacts a backend or database. */}
+      <section className="max-w-3xl mx-auto bg-white border border-blue-200 rounded-2xl p-5 sm:p-6 shadow-sm space-y-3" aria-labelledby="html-audit-heading">
+        <div>
+          <h2 id="html-audit-heading" className="text-lg font-bold text-slate-900">Analyze HTML Source — Working Now</h2>
+          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+            Upload an HTML file or paste your actual webpage source. We check titles, metadata, headings, canonical tags, image alt attributes and JSON-LD. Your HTML stays in this browser. HTTP status, speed, live links and rankings cannot be measured offline.
+          </p>
+        </div>
+        <label className="block text-xs font-semibold text-slate-700">
+          Choose HTML file (maximum 2 MB)
+          <input type="file" accept=".html,.htm,text/html" onChange={e => void handleLocalFile(e.target.files?.[0])}
+            className="block w-full mt-2 text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700"/>
+        </label>
+        <label className="block text-xs font-semibold text-slate-700">
+          Or paste webpage HTML
+          <textarea value={localHtml} onChange={e => { setLocalHtml(e.target.value); setLocalFileName('pasted-page.html'); }}
+            rows={5} placeholder="<!doctype html><html lang=&quot;en&quot;><head><title>My Page</title>..."
+            className="block mt-2 w-full border border-slate-300 rounded-xl p-3 text-xs font-mono bg-slate-50 text-slate-900 focus:ring-2 focus:ring-blue-500"/>
+        </label>
+        <button type="button" onClick={handleLocalHtmlAudit} disabled={!localHtml.trim()}
+          className="w-full sm:w-auto px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold disabled:opacity-50">
+          Analyze HTML Source
+        </button>
+        <p className="text-[11px] text-slate-500">
+          Open a page, right-click and choose View Page Source, then copy its HTML. JavaScript-rendered content may not be included in a source snapshot.
+        </p>
+      </section>
+
       {/* Error state */}
       {error && (
         <div className="max-w-3xl mx-auto p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3">
@@ -291,7 +356,7 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
             <strong className="font-semibold text-rose-900">Audit Request Blocked or Failed</strong>
             <p className="text-xs text-rose-700">{error}</p>
             <p className="text-[11px] text-rose-600">
-              Note: RankNova enforces strict SSRF protections. Internal network destinations, private IPs, and localhost targets are blocked by design.
+              Live URL audits validate remote destinations. Local HTML checks never make outbound network requests.
             </p>
           </div>
         </div>
@@ -322,10 +387,10 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                      HTTP {report.statusCode} OK
+                      {isLocalReport ? 'Local HTML source' : `HTTP ${report.statusCode}`}
                     </span>
                     <span className="text-xs text-slate-500 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" /> {report.fetchDurationMs}ms TTFB
+                      {isLocalReport ? `${(report.pageSizeBytes / 1024).toFixed(1)} KB source` : <><Clock className="w-3.5 h-3.5 text-slate-400" /> {report.fetchDurationMs}ms fetch</>}
                     </span>
                   </div>
                   <h2 className="text-lg font-bold text-slate-900 max-w-xl truncate" title={report.targetUrl}>
@@ -355,7 +420,7 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
                 </button>
                 <button
                   onClick={handleSaveToFirestore}
-                  disabled={savedToCloud}
+                  disabled={savedToCloud || isLocalReport}
                   className={`px-3.5 py-2 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-colors cursor-pointer ${
                     savedToCloud
                       ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
@@ -363,7 +428,7 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
                   }`}
                 >
                   {savedToCloud ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
-                  <span>{savedToCloud ? 'Saved to Cloud' : 'Save to Cloud'}</span>
+                  <span>{isLocalReport ? 'Local-only report' : savedToCloud ? 'Saved to Cloud' : 'Save to Cloud'}</span>
                 </button>
               </div>
             </div>
@@ -553,7 +618,7 @@ Audit run by RankNova SEO Suite. Scores are custom rule-based diagnostics and no
               <span>Diagnostic Transparency & Non-Executed Checks</span>
             </div>
             <p className="leading-relaxed">
-              To guarantee zero SSRF exposure and lightweight resource usage, the following checks were omitted by design:
+              These checks were not performed; only available evidence contributes to the score:
             </p>
             <ul className="list-disc pl-5 space-y-1">
               {report.unsupportedChecks.map((item, idx) => (
