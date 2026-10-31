@@ -29,6 +29,7 @@ jobs:
       - name: Build GitHub Pages frontend
         env:
           GITHUB_PAGES: 'true'
+          VITE_STATIC_SITE: 'true'
         run: npm run build
       - name: Install Playwright browser testing dependencies
         run: |
