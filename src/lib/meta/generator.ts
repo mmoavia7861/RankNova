@@ -49,40 +49,28 @@ export function generateMetaSuggestions(params: {
   const capKw = kw.charAt(0).toUpperCase() + kw.slice(1);
   const brandSuffix = brand ? ` | ${brand}` : '';
 
-  const currentYear = new Date().getFullYear();
-
-  // 5 distinct headline styles
+  // Build practical templates from actual user-provided keyword, purpose and
+  // search intent, without inventing reviews, rankings or product guarantees.
+  const detail = (topic || kw).replace(/\s+/g, ' ').slice(0, 110);
+  const intent = params.intent || 'informational';
+  const verb = intent === 'transactional' ? 'Get Started with'
+    : intent === 'commercial' ? 'Compare and Explore'
+    : intent === 'navigational' ? 'Find'
+    : 'Understand';
   const titleOptions: { title: string; style: MetaVariant['style'] }[] = [
-    {
-      title: `${capKw}: Complete Guide & Best Practices (${currentYear})${brandSuffix}`,
-      style: 'Comprehensive Guide'
-    },
-    {
-      title: `How to Master ${capKw} - Proven Step-by-Step Tips${brandSuffix}`,
-      style: 'Action & Benefit'
-    },
-    {
-      title: `${capKw} Explained: Everything You Need to Know${brandSuffix}`,
-      style: 'Direct & Definitive'
-    },
-    {
-      title: brand ? `${brand} ${capKw} - Fast, Reliable & Actionable` : `Top ${capKw} Strategies for Rapid Results (${currentYear})`,
-      style: 'Brand-First'
-    },
-    {
-      title: `Looking for ${capKw}? Here Is What Actually Works${brandSuffix}`,
-      style: 'Question & Solution'
-    }
+    { title: capKw + ': Key Information' + brandSuffix, style: 'Direct & Definitive' },
+    { title: verb + ' ' + capKw + brandSuffix, style: 'Action & Benefit' },
+    { title: capKw + ': Practical Guide' + brandSuffix, style: 'Comprehensive Guide' },
+    { title: brand ? brand + ' | ' + capKw : capKw + ': Overview and Options', style: 'Brand-First' },
+    { title: 'What Should You Know About ' + capKw + '?' + brandSuffix, style: 'Question & Solution' }
   ];
 
   const descOptions = [
-    `Explore essential ${kw} tips, key strategies, and actionable takeaways in this comprehensive breakdown. Learn how to optimize results today.`,
-    `Discover how to effectively implement ${kw}. Follow proven techniques to boost rankings, increase visibility, and drive measurable growth.`,
-    `Master ${kw} with our authoritative ${currentYear} overview. Find expert guidance, practical examples, and step-by-step instructions.`,
-    brand
-      ? `Get trusted ${kw} solutions from ${brand}. Improve your workflows and discover the highest-impact strategies for success.`
-      : `Looking to succeed with ${kw}? Review clear guidance, avoid common pitfalls, and elevate your performance starting now.`,
-    `Everything you need to know about ${kw}. Read the detailed breakdown, compare key approaches, and make informed decisions.`
+    'Explore ' + kw + '. ' + detail + '. Learn what matters and review useful next steps.',
+    verb + ' ' + kw + '. ' + detail + '. Find relevant information and make informed choices.',
+    'Read a practical overview of ' + kw + '. ' + detail + '. Understand the essentials.',
+    (brand ? 'Explore ' + kw + ' with ' + brand + '. ' : 'Explore the options for ' + kw + '. ') + detail + '.',
+    'Questions about ' + kw + '? ' + detail + '. Review the details and common considerations.'
   ];
 
   const variants: MetaVariant[] = titleOptions.map((opt, i) => {
