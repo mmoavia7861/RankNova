@@ -79,8 +79,12 @@ try {
   const deepResponse = await direct.goto(url + 'tools/seo-audit/', {waitUntil: 'domcontentloaded'});
   assert.equal(deepResponse?.status(), 200, 'Static SEO routes need real HTTP 200 status');
   assert.match(await direct.title(), /Website SEO Checker/i);
+  // The static HTTP document has the published canonical. Hydrated SPA metadata
+  // appropriately points to the test server's origin during local QA.
+  assert.match(await deepResponse.text(),
+    /<link rel="canonical" href="https:\/\/mmoavia7861\.github\.io\/RankNova\/tools\/seo-audit\/"/);
   assert.equal(await direct.locator('link[rel="canonical"]').getAttribute('href'),
-    'https://mmoavia7861.github.io/RankNova/tools/seo-audit/');
+    'http://127.0.0.1:4173/RankNova/tools/seo-audit');
   await direct.waitForTimeout(1400);
   assert.ok(await direct.locator('#root').locator('*').count() > 1, 'Deep route app did not render');
   await direct.close();
