@@ -170,12 +170,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-400 pt-4">
             <p>&copy; {new Date().getFullYear()} RankNova Analytics. All rights reserved.</p>
             <div className="flex items-center gap-4">
-              {typeof window !== 'undefined' && window.location.hostname.endsWith('github.io')
-                  ? <span>Static preview — sitemap available after full-stack deployment</span>
-                  : <>
-                      <a href="/sitemap.xml" className="hover:text-slate-700">XML Sitemap</a>
-                      <a href="/robots.txt" className="hover:text-slate-700">robots.txt</a>
-                    </>}
+              <a href={`${import.meta.env.BASE_URL}sitemap.xml`} className="hover:text-slate-700">XML Sitemap</a>
+              {typeof window !== 'undefined' && !window.location.hostname.endsWith('github.io') && (
+                <a href="/robots.txt" className="hover:text-slate-700">robots.txt</a>
+              )}
             </div>
           </div>
         </div>

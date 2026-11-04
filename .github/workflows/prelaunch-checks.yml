@@ -31,6 +31,8 @@ jobs:
           GITHUB_PAGES: 'true'
           VITE_STATIC_SITE: 'true'
         run: npm run build
+      - name: Generate GitHub Pages route HTML and sitemap
+        run: node scripts/build-pages-seo.mjs
       - name: Install Playwright browser testing dependencies
         run: |
           npm install --no-save playwright@1.58.2 --no-audit --no-fund

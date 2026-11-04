@@ -1,0 +1,58 @@
+{
+  "/": {
+    "title": "RankNova | Free SEO Audit, Meta Tag & Schema Tools",
+    "description": "Analyze your own HTML, generate SEO titles and meta descriptions, and create Schema.org JSON-LD. Live website URL scans require a connected backend."
+  },
+  "/tools/seo-audit": {
+    "title": "Free Website SEO Checker & HTML Audit | RankNova",
+    "description": "Inspect real HTML titles, descriptions, headings, images, canonicals and structured data. Live URL checks require a configured API."
+  },
+  "/tools/meta-tag-generator": {
+    "title": "Free Meta Tag Generator & SERP Preview | RankNova",
+    "description": "Create editable title tags, meta descriptions and social cards with desktop and mobile search snippet previews."
+  },
+  "/tools/schema-generator": {
+    "title": "Free Schema Markup Generator (JSON-LD) | RankNova",
+    "description": "Build Schema.org JSON-LD for articles, products, local businesses and breadcrumbs; validate and export your structured data."
+  },
+  "/guides": {
+    "title": "SEO Guides and Technical Tutorials | RankNova",
+    "description": "Practical guides to on-page SEO, structured data, title tags, meta descriptions and indexability."
+  },
+  "/guides/title-tag-optimization-guide": {
+    "title": "SEO Title Tags: Length, Pixels and Clarity | RankNova",
+    "description": "Learn how to write descriptive SEO titles, assess visual widths and avoid relying on fixed character limits."
+  },
+  "/guides/schema-json-ld-mastery": {
+    "title": "Schema.org JSON-LD Guide for Rich Results | RankNova",
+    "description": "Understand structured data types, accurate markup and ways to check eligibility for Google rich results."
+  },
+  "/guides/technical-seo-audit-checklist": {
+    "title": "Technical SEO Audit Checklist | RankNova",
+    "description": "A practical on-page checklist covering HTTP responses, canonicals, headings, alt text, indexing and mobile usability."
+  },
+  "/guides/meta-description-best-practices": {
+    "title": "Meta Description Best Practices | RankNova",
+    "description": "Learn to write useful descriptions for searchers and understand when Google may choose a different snippet."
+  },
+  "/about": {
+    "title": "About RankNova | Transparent SEO Tools",
+    "description": "Learn about RankNova's browser-based SEO utilities and transparent audit methodology."
+  },
+  "/contact": {
+    "title": "Contact RankNova | Support and Feedback",
+    "description": "Send RankNova questions or feedback about our SEO tools and site features."
+  },
+  "/privacy-policy": {
+    "title": "Privacy Policy | RankNova",
+    "description": "Read how RankNova handles tool inputs, user information and privacy choices."
+  },
+  "/terms": {
+    "title": "Terms of Service | RankNova",
+    "description": "Review the terms for using RankNova SEO utilities and generated metadata."
+  },
+  "/disclaimer": {
+    "title": "SEO Tool Disclaimer | RankNova",
+    "description": "Learn the limitations of rule-based audit scores and why no ranking or rich result is guaranteed."
+  }
+}

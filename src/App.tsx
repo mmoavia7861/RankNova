@@ -16,6 +16,7 @@ import { AdminPage } from './pages/AdminPage';
 import { auth } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { trackEvent } from './lib/analytics';
+import pageMetadata from './lib/pageMetadata.json';
 
 // For project-hosted GitHub Pages, strip the /RankNova prefix when matching routes.
 // Cloud Run continues to use the root path as before.
@@ -23,10 +24,11 @@ const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 function getCurrentRoute(): string {
   const pathname = window.location.pathname;
-  if (BASE_PATH && (pathname === BASE_PATH || pathname.startsWith(BASE_PATH + '/'))) {
-    return pathname.slice(BASE_PATH.length) || '/';
-  }
-  return pathname;
+  const route = BASE_PATH && (pathname === BASE_PATH || pathname.startsWith(BASE_PATH + '/'))
+    ? pathname.slice(BASE_PATH.length) || '/'
+    : pathname;
+  // Generated GitHub Pages directories resolve to slash-terminated URLs.
+  return route === '/' ? '/' : route.replace(/\/+$/, '');
 }
 
 export default function App() {
@@ -44,6 +46,39 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  // Keep head metadata accurate after SPA navigation, not just on direct loads.
+  useEffect(() => {
+    const info = (pageMetadata as Record<string, {title: string; description: string}>)[currentPath];
+    document.title = info?.title || 'Page not found | RankNova';
+    const put = (selector: string, key: string, type: 'name'|'property', value: string) => {
+      let element = document.querySelector<HTMLMetaElement>(selector);
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute(type, key);
+        document.head.appendChild(element);
+      }
+      element.content = value;
+    };
+    put('meta[name="description"]', 'description', 'name', info?.description || 'RankNova page not found.');
+    put('meta[property="og:title"]', 'og:title', 'property', document.title);
+    put('meta[property="og:description"]', 'og:description', 'property', info?.description || '');
+    put('meta[name="robots"]', 'robots', 'name', info ? 'index, follow' : 'noindex, follow');
+    const onPages = BASE_PATH === '/RankNova' && window.location.hostname.endsWith('github.io');
+    const pagePath = currentPath === '/' ? '/' : currentPath + (onPages ? '/' : '');
+    const canonicalUrl = window.location.origin + BASE_PATH + pagePath;
+    let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.rel = 'canonical';
+      document.head.appendChild(canonical);
+    }
+    canonical.href = canonicalUrl;
+    put('meta[property="og:url"]', 'og:url', 'property', canonicalUrl);
+    const image = new URL(import.meta.env.BASE_URL + 'assets/aistudio/RankNova_Growth_Analytics_Logo_037f0c19.png', window.location.origin).href;
+    put('meta[property="og:image"]', 'og:image', 'property', image);
+    put('meta[name="twitter:image"]', 'twitter:image', 'name', image);
+  }, [currentPath]);
 
   // Firebase Auth state listener
   useEffect(() => {

@@ -12,7 +12,9 @@ This repository is a **full-stack React + Express application**, not just a stat
 4. Open **Actions**, find **Deploy RankNova frontend to GitHub Pages**, and run it if necessary.
 5. Visit https://mmoavia7861.github.io/RankNova/ after a successful deploy.
 
-The workflow builds Vite with `GITHUB_PAGES=true`, applying `base: '/RankNova/'`, copies `index.html` to `404.html` as a client-side route fallback, and deploys the built `dist/` folder. On GitHub Pages, direct requests for nested routes may still return an HTTP 404 status to crawlers even though the browser displays the React app. For reliable SEO indexing, use a full-stack host that returns HTTP 200 with appropriate HTML for each route.
+The workflow builds Vite with `GITHUB_PAGES=true`, applying `base: '/RankNova/'`, and generates route-specific HTML entrypoints with titles, descriptions and canonical URLs using `scripts/build-pages-seo.mjs`. All listed routes (including 3 tools, 4 built-in guides and legal pages) receive HTTP 200 instead of an SPA fallback 404. The sitemap is `https://mmoavia7861.github.io/RankNova/sitemap.xml`. Update `src/lib/pageMetadata.json` when changing the built-in route list.
+
+This is **not** full article prerendering: the main React content still needs JavaScript. Firebase CMS guide routes are not automatically included; do not submit unpublished or unknown routes as indexable pages. GitHub Pages project repositories cannot control host-root `/robots.txt` from the `/RankNova/` directory. For robust server-rendered SEO, use an appropriate full-stack deployment.
 
 ## For a fully working business website
 

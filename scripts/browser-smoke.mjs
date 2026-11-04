@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve, sep, extname } from 'node:path';
 import assert from 'node:assert/strict';
 
@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 // Vite preview in this repository does not mount assets at /RankNova/ and returns 404,
 // so it is not an accurate hosting compatibility test.
 const root = resolve('dist');
-const mime = {'.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.png':'image/png', '.svg':'image/svg+xml', '.jpg':'image/jpeg', '.ico':'image/x-icon', '.json':'application/json'};
+const mime = {'.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.png':'image/png', '.svg':'image/svg+xml', '.jpg':'image/jpeg', '.ico':'image/x-icon', '.json':'application/json', '.xml':'application/xml'};
 const server = createServer((req, res) => {
   const url = new URL(req.url || '/', 'http://127.0.0.1');
   const requested = decodeURIComponent(url.pathname);
@@ -20,10 +20,12 @@ const server = createServer((req, res) => {
   if (file !== root && !file.startsWith(root + sep)) {
     res.writeHead(403);res.end('Invalid path');return;
   }
-  const target = existsSync(file) ? file : resolve(root, '404.html');
+  const candidate = existsSync(file) && statSync(file).isDirectory() ? resolve(file, 'index.html') : file;
+  const exact = existsSync(candidate) && statSync(candidate).isFile();
+  const target = exact ? candidate : resolve(root, '404.html');
   if (!existsSync(target)) {res.writeHead(404);res.end('Not found');return;}
   res.setHeader('Content-Type', mime[extname(target)] || 'application/octet-stream');
-  if (!existsSync(file)) res.statusCode = 404;
+  if (!exact) res.statusCode = 404;
   res.end(readFileSync(target));
 });
 await new Promise(resolveReady => server.listen(4173, '127.0.0.1', resolveReady));
@@ -73,6 +75,20 @@ try {
   assert.ok((await page.locator('#root').locator('*').count()) > 1, 'The local production build React root is blank');
   assert.equal(errors.length, 0, 'Local browser has uncaught errors');
   assert.ok((await page.locator('h1').count()) > 0, 'Home page heading missing');
+  const direct = await browser.newPage();
+  const deepResponse = await direct.goto(url + 'tools/seo-audit/', {waitUntil: 'domcontentloaded'});
+  assert.equal(deepResponse?.status(), 200, 'Static SEO routes need real HTTP 200 status');
+  assert.match(await direct.title(), /Website SEO Checker/i);
+  assert.equal(await direct.locator('link[rel="canonical"]').getAttribute('href'),
+    'https://mmoavia7861.github.io/RankNova/tools/seo-audit/');
+  await direct.waitForTimeout(1400);
+  assert.ok(await direct.locator('#root').locator('*').count() > 1, 'Deep route app did not render');
+  await direct.close();
+  const xml = await page.request.get(url + 'sitemap.xml');
+  assert.equal(xml.status(), 200, 'No public sitemap');
+  assert.match(await xml.text(), /RankNova\/tools\/schema-generator\//);
+  console.log('PASS: deep links, unique SEO heads and sitemap.');
+
   // Functional smoke tests for the three SEO tools, not just homepage rendering.
   await page.getByRole('button', { name: 'SEO Audit', exact: true }).first().click();
   const offline = page.locator('section[aria-labelledby="html-audit-heading"]');
