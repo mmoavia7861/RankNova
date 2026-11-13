@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -17,6 +17,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      pages_mode: ${{ steps.pages.outputs.mode }}
     steps:
       - name: Checkout original PDF and image tools source
         uses: actions/checkout@v4
@@ -24,23 +26,16 @@ jobs:
           repository: mmoavia7861/tools-website
           ref: main
           persist-credentials: false
-      - name: Confirm GitHub Pages source is GitHub Actions
+      - name: Detect Pages publication mode
+        id: pages
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          BUILD_TYPE=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.build_type // "unknown"')
-          echo "GitHub Pages build type: $BUILD_TYPE"
-          if [ "$BUILD_TYPE" = "legacy" ]; then
-            echo "Trying to switch Pages from branch publishing to GitHub Actions..."
-            if ! gh api --method PUT "repos/${GITHUB_REPOSITORY}/pages" -f build_type=workflow; then
-              echo "::error::Could not switch Pages automatically. Open Settings > Pages > Build and deployment > Source and select GitHub Actions, then rerun."
-              exit 1
-            fi
-            BUILD_TYPE=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.build_type // "unknown"')
-            echo "GitHub Pages build type after update: $BUILD_TYPE"
-          fi
-          if [ "$BUILD_TYPE" != "workflow" ]; then
-            echo "::error::GitHub Pages must use GitHub Actions as the build source. Change it under Settings > Pages."
+          MODE=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.build_type // "legacy"')
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "Pages mode: $MODE"
+          if [ "$MODE" != "legacy" ] && [ "$MODE" != "workflow" ]; then
+            echo "::error::Unsupported Pages mode $MODE"
             exit 1
           fi
       - name: Set up Node.js
@@ -75,15 +70,50 @@ jobs:
           test -f dist/edit-pdf/index.html
           test -f dist/visiting-card-generator/index.html
           test -f dist/compress-pdf/index.html
+      - name: Validate generated tool routes and JavaScript assets
+        run: |
+          test -s dist/index.html
+          test -d dist/assets
+          for route in background-remover edit-pdf compress-pdf visiting-card-generator image-to-pdf qr-code-generator compress-video; do
+            test -s "dist/$route/index.html"
+          done
+          grep -q '/RankNova/assets/' dist/index.html
+          if grep -q '/tools-website/assets/' dist/index.html; then
+            echo "::error::Wrong asset base path"; exit 1
+          fi
+      - name: Publish compiled site for branch-based GitHub Pages
+        if: steps.pages.outputs.mode == 'legacy'
+        run: |
+          cp dist/index.html index.html
+          cp dist/404.html 404.html
+          rm -rf assets
+          cp -R dist/assets assets
+          cp dist/robots.txt robots.txt
+          cp dist/sitemap.xml sitemap.xml
+          for route in about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video blog; do
+            rm -rf "$route"
+            cp -R "dist/$route" "$route"
+          done
+          touch .nojekyll
+          git add index.html 404.html assets robots.txt sitemap.xml .nojekyll about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video blog
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'chore(pages): publish restored tools and correct RankNova assets'
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
       - name: Avoid Jekyll processing
         run: touch dist/.nojekyll
       - name: Configure Pages
+        if: steps.pages.outputs.mode == 'workflow'
         uses: actions/configure-pages@v5
       - name: Upload static build
+        if: steps.pages.outputs.mode == 'workflow'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
   deploy:
+    if: needs.build.outputs.pages_mode == 'workflow'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
