@@ -218,7 +218,9 @@ const ROUTE_METADATA: Record<string, { title: string; description: string }> = {
 
 function injectMetadata(html: string, reqPath: string): string {
   const meta = ROUTE_METADATA[reqPath] || ROUTE_METADATA['/'];
+  const robots = reqPath === '/admin' || !ROUTE_METADATA[reqPath] ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1';
   return html
+    .replace(/<meta name="robots" content="[^"]*" \/>/, `<meta name="robots" content="${robots}" />`)
     .replace(/<title>.*?<\/title>/, `<title>${meta.title}</title>`)
     .replace(
       /<meta name="description" content=".*?" \/>/,
