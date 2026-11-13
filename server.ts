@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { runSeoAudit } from './src/server/auditFetcher';
 import { getGroundedSerpInsights } from './src/server/geminiSearch';
 import { checkRateLimit } from './src/server/security/rateLimit';
+import { validateTargetUrl } from './src/server/security/urlGuard';
 
 dotenv.config();
 
@@ -125,18 +126,17 @@ app.post('/api/audit', async (req, res) => {
     });
   }
 
-  const { url } = req.body;
-  if (!url || typeof url !== 'string') {
-    return res.status(400).json({ error: 'Target URL is required.' });
+  const url = req.body?.url;
+  if (typeof url !== 'string' || url.trim().length === 0 || url.length > 2048 || !validateTargetUrl(url).valid) {
+    return res.status(400).json({ error: 'Enter a valid public HTTP or HTTPS website URL.' });
   }
 
   try {
     const report = await runSeoAudit(url);
     return res.json(report);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to audit website.';
-    console.error(`Audit error for ${url}:`, message);
-    return res.status(400).json({ error: message });
+    console.error('SEO audit request failed');
+    return res.status(400).json({ error: 'Unable to audit this website. Check the URL and try again.' });
   }
 });
 
@@ -152,7 +152,9 @@ app.post('/api/search-grounding', async (req, res) => {
   }
 
   const { keyword, topic, brand } = req.body;
-  if (!keyword || typeof keyword !== 'string') {
+  if (typeof keyword !== 'string' || !keyword.trim() || keyword.length > 200 ||
+      (topic !== undefined && (typeof topic !== 'string' || topic.length > 500)) ||
+      (brand !== undefined && (typeof brand !== 'string' || brand.length > 200))) {
     return res.status(400).json({ error: 'Target keyword is required.' });
   }
 
