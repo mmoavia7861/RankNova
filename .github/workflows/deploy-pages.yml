@@ -18,8 +18,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout original PDF and image tools source
         uses: actions/checkout@v4
+        with:
+          repository: mmoavia7861/tools-website
+          ref: main
+          persist-credentials: false
       - name: Confirm GitHub Pages source is GitHub Actions
         env:
           GH_TOKEN: ${{ github.token }}
@@ -42,19 +46,35 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
+      - name: Configure restored tools for RankNova Pages path
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('vite.config.ts')
+          s = p.read_text()
+          assert "'/tools-website/'" in s
+          p.write_text(s.replace("'/tools-website/'", "'/RankNova/'"))
+          p = Path('scripts/prepare-pages-seo.mjs')
+          s = p.read_text()
+          assert "'/tools-website/'" in s
+          p.write_text(s.replace("'/tools-website/'", "'/RankNova/'").replace('/tools-website/admin/', '/RankNova/admin/'))
+          PY
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Build for GitHub Pages
+      - name: Build restored PDF, image, and visiting card tools
         env:
           GITHUB_PAGES: 'true'
-          VITE_STATIC_SITE: 'true'
-          # Set under Settings -> Secrets and variables -> Actions -> Variables.
-          # The value is a public HTTPS URL, not a secret.
-          VITE_API_BASE_URL: ${{ vars.RANKNOVA_API_BASE_URL }}
-        run: npm run build
-      - name: Generate direct route HTML and XML sitemap
-        run: node scripts/build-pages-seo.mjs
+        run: |
+          cp index.source.html index.html
+          npm run build
+          node scripts/prepare-pages-seo.mjs
+          test -d dist/assets
+          grep -q '/RankNova/assets/' dist/index.html
+          test -f dist/background-remover/index.html
+          test -f dist/edit-pdf/index.html
+          test -f dist/visiting-card-generator/index.html
+          test -f dist/compress-pdf/index.html
       - name: Avoid Jekyll processing
         run: touch dist/.nojekyll
       - name: Configure Pages
