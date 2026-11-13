@@ -38,7 +38,7 @@ function makeHtml(route, info) {
       ? {
           '@context': 'https://schema.org',
           '@type': 'SoftwareApplication',
-          name: info.title.replace(/ \\| RankNova$/, ''),
+          name: info.title.replace(/ \| RankNova$/, ''),
           applicationCategory: 'BusinessApplication',
           operatingSystem: 'Web',
           url: canonical,
@@ -47,7 +47,7 @@ function makeHtml(route, info) {
         }
       : null;
   const jsonLd = structuredData
-    ? '<script type="application/ld+json">' + JSON.stringify(structuredData).replace(/</g, '\\u003c') + '</script>\\n'
+    ? '<script type="application/ld+json">' + JSON.stringify(structuredData).replace(/</g, '\\u003c') + '</script>\n'
     : '';
   return html.replace('</head>',
     '<link rel="canonical" href="' + esc(canonical) + '" />\n' +
