@@ -33,6 +33,16 @@
             lastError = String(event.reason.message || event.reason).slice(0, 300);
           }
         });
+        var rootObserver = new MutationObserver(function () {
+          var root = document.getElementById('root');
+          if (root && root.childElementCount > 0) {
+            var message = document.getElementById('ranknova-startup-message');
+            if (message) message.hidden = true;
+            rootObserver.disconnect();
+          }
+        });
+        var startupRoot = document.getElementById('root');
+        if (startupRoot) rootObserver.observe(startupRoot, { childList: true });
         setTimeout(function () {
           var rawViteSource = !!document.querySelector('script[type="module"][src*="/src/main.tsx"]');
           var root = document.getElementById('root');
