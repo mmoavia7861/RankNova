@@ -24,11 +24,36 @@ function makeHtml(route, info) {
   swap(/<meta property="og:title"[^>]*>/i, '<meta property="og:title" content="' + esc(info.title) + '" />');
   swap(/<meta property="og:description"[^>]*>/i, '<meta property="og:description" content="' + esc(info.description) + '" />');
   swap(/<meta property="og:image"[^>]*>/i, '<meta property="og:image" content="' + logo + '" />');
+  // Structured data describes real public tools only; no fabricated ratings or FAQ answers.
+  const structuredData = route === '/'
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'RankNova',
+        url: site + '/',
+        description: info.description,
+        inLanguage: 'en'
+      }
+    : route.startsWith('/tools/')
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'SoftwareApplication',
+          name: info.title.replace(/ \\| RankNova$/, ''),
+          applicationCategory: 'BusinessApplication',
+          operatingSystem: 'Web',
+          url: canonical,
+          description: info.description,
+          offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
+        }
+      : null;
+  const jsonLd = structuredData
+    ? '<script type="application/ld+json">' + JSON.stringify(structuredData).replace(/</g, '\\u003c') + '</script>\\n'
+    : '';
   return html.replace('</head>',
     '<link rel="canonical" href="' + esc(canonical) + '" />\n' +
     '<meta property="og:url" content="' + esc(canonical) + '" />\n' +
     '<meta name="twitter:image" content="' + logo + '" />\n' +
-    '<meta name="robots" content="index, follow" />\n</head>');
+    '<meta name="robots" content="index, follow" />\n' + jsonLd + '</head>');
 }
 for (const [route, info] of Object.entries(pages)) {
   if (!route.startsWith('/') || route.includes('..') || route === '/admin' || !info.title || !info.description) {
