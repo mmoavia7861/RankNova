@@ -1,19 +1,19 @@
 {
   "/": {
     "title": "RankNova | Free SEO Audit, Meta Tag & Schema Tools",
-    "description": "Analyze your own HTML, generate SEO titles and meta descriptions, and create Schema.org JSON-LD. Live website URL scans require a connected backend."
+    "description": "Free SEO tools: inspect website HTML, generate meta tags with SERP previews and create JSON-LD schema markup. Live URL audits require a connected backend."
   },
   "/tools/seo-audit": {
-    "title": "Free Website SEO Checker & HTML Audit | RankNova",
-    "description": "Inspect real HTML titles, descriptions, headings, images, canonicals and structured data. Live URL checks require a configured API."
+    "title": "Free Website SEO Audit Checker | RankNova",
+    "description": "Check website SEO using real HTML: title tags, meta descriptions, H1-H3 headings, image alt text, canonical tags and structured data. URL scans need an active backend."
   },
   "/tools/meta-tag-generator": {
     "title": "Free Meta Tag Generator & SERP Preview | RankNova",
-    "description": "Create editable title tags, meta descriptions and social cards with desktop and mobile search snippet previews."
+    "description": "Generate SEO title tags and meta descriptions. Preview desktop and mobile search snippets, check text length and copy editable HTML meta tags."
   },
   "/tools/schema-generator": {
-    "title": "Free Schema Markup Generator (JSON-LD) | RankNova",
-    "description": "Build Schema.org JSON-LD for articles, products, local businesses and breadcrumbs; validate and export your structured data."
+    "title": "Free Schema Markup Generator & JSON-LD | RankNova",
+    "description": "Create JSON-LD schema markup for Article, Product, LocalBusiness and BreadcrumbList. Validate fields, copy code and test eligible markup."
   },
   "/guides": {
     "title": "SEO Guides and Technical Tutorials | RankNova",
