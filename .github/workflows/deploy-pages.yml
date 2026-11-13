@@ -20,11 +20,14 @@ jobs:
     outputs:
       pages_mode: ${{ steps.pages.outputs.mode }}
     steps:
+      - name: Checkout RankNova publishing repository
+        uses: actions/checkout@v4
       - name: Checkout original PDF and image tools source
         uses: actions/checkout@v4
         with:
           repository: mmoavia7861/tools-website
           ref: main
+          path: restored-tools
           persist-credentials: false
       - name: Detect Pages publication mode
         id: pages
@@ -43,6 +46,7 @@ jobs:
         with:
           node-version: '24'
       - name: Configure restored tools for RankNova Pages path
+        working-directory: restored-tools
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -56,8 +60,10 @@ jobs:
           p.write_text(s.replace("'/tools-website/'", "'/RankNova/'").replace('/tools-website/admin/', '/RankNova/admin/'))
           PY
       - name: Install dependencies
+        working-directory: restored-tools
         run: npm install --no-audit --no-fund
       - name: Build restored PDF, image, and visiting card tools
+        working-directory: restored-tools
         env:
           GITHUB_PAGES: 'true'
         run: |
@@ -70,6 +76,10 @@ jobs:
           test -f dist/edit-pdf/index.html
           test -f dist/visiting-card-generator/index.html
           test -f dist/compress-pdf/index.html
+      - name: Copy production output into publishing workspace
+        run: |
+          rm -rf dist
+          cp -R restored-tools/dist dist
       - name: Validate generated tool routes and JavaScript assets
         run: |
           test -s dist/index.html
