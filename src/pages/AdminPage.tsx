@@ -73,7 +73,7 @@ export const AdminPage: React.FC = () => {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
 
   const user = auth.currentUser;
-  const isAdmin = user && isUserAdmin(user.email);
+  const isAdmin = user && user.emailVerified && isUserAdmin(user.email);
 
   useEffect(() => {
     if (isAdmin) {
@@ -185,10 +185,10 @@ export const AdminPage: React.FC = () => {
         </div>
         <h2 className="text-xl font-bold text-slate-900">Admin Authentication Required</h2>
         <p className="text-xs text-slate-600 leading-relaxed">
-          This portal is restricted to the platform owner (<code>{ADMIN_EMAIL}</code>). Please authenticate with your verified Google account.
+          This portal requires an authorized, verified Google account.
         </p>
         <button
-          onClick={() => signInWithPopup(auth, new GoogleAuthProvider()).catch(error => { console.error('Admin sign-in failed', error); alert('Unable to sign in. Check your Google account and Firebase authorized domains.'); })}
+          onClick={() => signInWithPopup(auth, new GoogleAuthProvider()).catch(error => { console.error('Admin sign-in failed'); alert('Unable to sign in. Please try again later.'); })}
           className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
         >
           Sign in with Owner Google Account
