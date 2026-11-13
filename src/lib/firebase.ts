@@ -52,13 +52,13 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.error('Firestore operation failed:', operationType);
+  throw new Error('Unable to complete this request. Please try again later.');
 }
 
 export const ADMIN_EMAIL = 'moaviah760@gmail.com';
 
 export function isUserAdmin(email?: string | null): boolean {
   if (!email) return false;
-  return email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  return auth.currentUser?.emailVerified === true && email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 }
