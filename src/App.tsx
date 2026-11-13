@@ -63,10 +63,13 @@ export default function App() {
     put('meta[name="description"]', 'description', 'name', info?.description || 'RankNova page not found.');
     put('meta[property="og:title"]', 'og:title', 'property', document.title);
     put('meta[property="og:description"]', 'og:description', 'property', info?.description || '');
-    put('meta[name="robots"]', 'robots', 'name', info ? 'index, follow' : 'noindex, follow');
+    put('meta[name="robots"]', 'robots', 'name', info && currentPath !== '/admin' ? 'index, follow, max-image-preview:large, max-snippet:-1' : 'noindex, follow');
     const onPages = BASE_PATH === '/RankNova' && window.location.hostname.endsWith('github.io');
     const pagePath = currentPath === '/' ? '/' : currentPath + (onPages ? '/' : '');
-    const canonicalUrl = window.location.origin + BASE_PATH + pagePath;
+    const configuredOrigin = (import.meta.env.VITE_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+    const canonicalUrl = configuredOrigin
+      ? configuredOrigin + (currentPath === '/' ? '/' : currentPath)
+      : window.location.origin + BASE_PATH + pagePath;
     let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     if (!canonical) {
       canonical = document.createElement('link');
