@@ -132,6 +132,7 @@ jobs:
               if (!fs.existsSync(file)) throw new Error('Missing asset '+file);
             }
             if (!html.includes('rel="canonical"')) throw new Error('Missing canonical '+route);
+            if (!html.includes('href="'+origin+base+route)) throw new Error('Wrong canonical URL '+route);
             if (html.includes('https://mmoavia7861.github.io/tools-website/')) throw new Error('Stale tools-website URL '+route);
           }
           const sitemap=fs.readFileSync('dist/sitemap.xml','utf8');
@@ -166,12 +167,14 @@ jobs:
           cp -R dist/assets assets
           cp dist/robots.txt robots.txt
           cp dist/sitemap.xml sitemap.xml
+          if [ -f dist/CNAME ]; then cp dist/CNAME CNAME; fi
           for route in admin about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video pdf-to-word word-to-pdf ai-card-generator wedding-card-maker birthday-card-maker blog; do
             rm -rf "$route"
             cp -R "dist/$route" "$route"
           done
           touch .nojekyll
           git add index.html 404.html assets robots.txt sitemap.xml .nojekyll admin about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video pdf-to-word word-to-pdf ai-card-generator wedding-card-maker birthday-card-maker blog
+          if [ -f dist/CNAME ]; then git add CNAME; fi
           if ! git diff --cached --quiet; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
