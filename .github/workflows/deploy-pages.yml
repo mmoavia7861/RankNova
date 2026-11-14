@@ -57,7 +57,7 @@ jobs:
           p = Path('scripts/prepare-pages-seo.mjs')
           s = p.read_text()
           assert "'/tools-website/'" in s
-          p.write_text(s.replace("'/tools-website/'", "'/RankNova/'").replace('/tools-website/admin/', '/RankNova/admin/'))
+          p.write_text(s.replace('/tools-website/', '/RankNova/'))
           PY
       - name: Install dependencies
         working-directory: restored-tools
@@ -103,7 +103,7 @@ jobs:
           }
           const sitemap=fs.readFileSync('dist/sitemap.xml','utf8');
           if(sitemap.includes('/tools-website/')) throw new Error('Stale sitemap URLs');
-          console.log('All seven tool routes have valid compiled JS/CSS, canonical URLs, and sitemap.');
+          console.log('All nine tool routes have valid compiled JS/CSS, canonical URLs, and sitemap.');
           JS
       - name: Copy production output into publishing workspace
         run: |
