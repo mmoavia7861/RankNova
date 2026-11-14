@@ -1,4 +1,4 @@
-# ToolCresta branding on existing /RankNova/ GitHub Pages path; card/PDF assistant, admin and converter smoke tests.
+# ToolCresta on existing /RankNova/ Pages path; verify assistant prompts, admin sign-in, card/PDF tools and mobile UX.
 # Adobe converter: keep local fallback and optional Turnstile-protected remote mode.
 name: Deploy ToolCresta frontend to GitHub Pages
 
