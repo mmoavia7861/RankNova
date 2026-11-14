@@ -1,4 +1,5 @@
 # RankNova QA: PDF writing and 3-in-1 card maker export, safe Gemini gateway checks.
+# Adobe converter: keep local fallback and optional Turnstile-protected remote mode.
 name: Deploy RankNova frontend to GitHub Pages
 
 on:
