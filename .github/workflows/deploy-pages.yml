@@ -69,6 +69,8 @@ jobs:
           GITHUB_PAGES: 'true'
           VITE_API_BASE_URL: ${{ vars.RANKNOVA_API_BASE_URL }}
           VITE_CONVERTER_API_URL: ${{ vars.RANKNOVA_CONVERTER_API_URL }}
+          VITE_AI_CARD_API_URL: ${{ vars.RANKNOVA_CARD_API_URL }}
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.RANKNOVA_TURNSTILE_SITE_KEY }}
         run: |
           cp index.source.html index.html
           npm run build
@@ -78,12 +80,18 @@ jobs:
           test -f dist/background-remover/index.html
           test -f dist/edit-pdf/index.html
           test -f dist/visiting-card-generator/index.html
+          test -f dist/ai-card-generator/index.html
+          test -f dist/wedding-card-maker/index.html
+          test -f dist/birthday-card-maker/index.html
           test -f dist/compress-pdf/index.html
       - name: Run TypeScript checks and utility tests
         working-directory: restored-tools
         run: |
           npm run lint
           npm test
+      - name: Test secure AI card Worker contract
+        working-directory: restored-tools
+        run: node --test card-ai-worker/worker.test.mjs
       - name: Browser-test PDF Editor writing and downloaded output
         working-directory: restored-tools
         env:
@@ -97,7 +105,7 @@ jobs:
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import path from 'node:path';
-          const routes = ['','background-remover','edit-pdf','compress-pdf','visiting-card-generator','image-to-pdf','qr-code-generator','compress-video','pdf-to-word','word-to-pdf'];
+          const routes = ['','background-remover','edit-pdf','compress-pdf','visiting-card-generator','image-to-pdf','qr-code-generator','compress-video','pdf-to-word','word-to-pdf','ai-card-generator','wedding-card-maker','birthday-card-maker'];
           for (const route of routes) {
             const html = fs.readFileSync(path.join('dist',route,'index.html'),'utf8');
             const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(x=>x[1]);
@@ -113,7 +121,7 @@ jobs:
           }
           const sitemap=fs.readFileSync('dist/sitemap.xml','utf8');
           if(sitemap.includes('/tools-website/')) throw new Error('Stale sitemap URLs');
-          console.log('All nine tool routes have valid compiled JS/CSS, canonical URLs, and sitemap.');
+          console.log('All existing tool routes plus AI and invitation cards have valid compiled assets, canonical URLs, and sitemap.');
           JS
       - name: Copy production output into publishing workspace
         run: |
@@ -123,7 +131,7 @@ jobs:
         run: |
           test -s dist/index.html
           test -d dist/assets
-          for route in background-remover edit-pdf compress-pdf visiting-card-generator image-to-pdf qr-code-generator compress-video pdf-to-word word-to-pdf; do
+          for route in background-remover edit-pdf compress-pdf visiting-card-generator image-to-pdf qr-code-generator compress-video pdf-to-word word-to-pdf ai-card-generator wedding-card-maker birthday-card-maker; do
             test -s "dist/$route/index.html"
           done
           grep -q '/RankNova/assets/' dist/index.html
@@ -139,12 +147,12 @@ jobs:
           cp -R dist/assets assets
           cp dist/robots.txt robots.txt
           cp dist/sitemap.xml sitemap.xml
-          for route in about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video pdf-to-word word-to-pdf blog; do
+          for route in about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video pdf-to-word word-to-pdf ai-card-generator wedding-card-maker birthday-card-maker blog; do
             rm -rf "$route"
             cp -R "dist/$route" "$route"
           done
           touch .nojekyll
-          git add index.html 404.html assets robots.txt sitemap.xml .nojekyll about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video pdf-to-word word-to-pdf blog
+          git add index.html 404.html assets robots.txt sitemap.xml .nojekyll about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video pdf-to-word word-to-pdf ai-card-generator wedding-card-maker birthday-card-maker blog
           if ! git diff --cached --quiet; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
