@@ -99,6 +99,7 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           node scripts/pdf-editor-write-smoke.mjs
+          node scripts/ai-card-smoke.mjs
       - name: Verify built HTML assets and SEO URLs
         working-directory: restored-tools
         run: |
