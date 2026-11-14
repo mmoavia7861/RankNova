@@ -96,7 +96,7 @@ jobs:
       - name: Test Adobe PDF Services Worker contract (mock API)
         working-directory: restored-tools
         run: node --test adobe-converter-worker/worker.test.mjs
-      - name: Browser-test PDF Editor writing and downloaded output
+      - name: Browser-test PDF tools, cards, desktop cursor and mobile touch animations
         working-directory: restored-tools
         env:
           GITHUB_PAGES: 'true'
@@ -105,6 +105,7 @@ jobs:
           node scripts/pdf-editor-write-smoke.mjs
           node scripts/ai-card-smoke.mjs
           node scripts/converter-adobe-smoke.mjs
+          node scripts/pointer-effects-smoke.mjs
       - name: Verify built HTML assets and SEO URLs
         working-directory: restored-tools
         run: |
