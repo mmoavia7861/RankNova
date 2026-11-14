@@ -1,0 +1,90 @@
+name: Deploy RankNova Adobe PDF Converter Backend
+
+# Trigger manually after adding encrypted Adobe, Cloudflare and Turnstile secrets.
+# Adobe conversion is performed by this server-side Worker, NEVER by GitHub Pages.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ranknova-adobe-converter
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Test and deploy secure Adobe PDF Services API
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout backend source from GitHub
+        uses: actions/checkout@v4
+        with:
+          repository: mmoavia7861/tools-website
+          ref: main
+          path: tools
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Test PDF to DOCX and DOCX to PDF backend flow
+        run: node --test tools/adobe-converter-worker/worker.test.mjs
+
+      - name: Check required encrypted secrets without printing their values
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ADOBE_CLIENT_ID: ${{ secrets.ADOBE_CLIENT_ID }}
+          ADOBE_CLIENT_SECRET: ${{ secrets.ADOBE_CLIENT_SECRET }}
+          TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID ADOBE_CLIENT_ID ADOBE_CLIENT_SECRET TURNSTILE_SECRET; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing repository secret: ${name}. Add it in Settings → Secrets and variables → Actions → New repository secret."
+              exit 1
+            fi
+          done
+          echo "Required backend secrets have been configured."
+
+      - name: Deploy Adobe Worker and install secrets
+        id: worker
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: tools/adobe-converter-worker
+          wranglerVersion: '4'
+          command: deploy
+          secrets: |
+            ADOBE_CLIENT_ID
+            ADOBE_CLIENT_SECRET
+            TURNSTILE_SECRET
+        env:
+          ADOBE_CLIENT_ID: ${{ secrets.ADOBE_CLIENT_ID }}
+          ADOBE_CLIENT_SECRET: ${{ secrets.ADOBE_CLIENT_SECRET }}
+          TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
+
+      - name: Show backend URL and frontend activation steps
+        env:
+          BACKEND_URL: ${{ steps.worker.outputs.deployment-url }}
+        run: |
+          {
+            echo "## RankNova Adobe PDF Services backend"
+            echo ""
+            echo "Worker deployed to: ${BACKEND_URL:-See the Wrangler step for the workers.dev URL}"
+            echo ""
+            echo "Next: open https://github.com/mmoavia7861/RankNova/settings/variables/actions"
+            echo "Set PUBLIC repository variables:"
+            echo "- \`RANKNOVA_CONVERTER_API_URL\` = exact HTTPS Worker origin"
+            echo "- \`RANKNOVA_TURNSTILE_SITE_KEY\` = Turnstile PUBLIC site key"
+            echo ""
+            echo "Re-run Deploy RankNova frontend to GitHub Pages to activate the Adobe cloud conversion option."
+            echo "Then test a small PDF → DOCX and DOCX → PDF file with real Adobe credentials."
+            echo ""
+            echo "Do not put Adobe Client ID or Secret in frontend variables or this summary."
+          } >> "$GITHUB_STEP_SUMMARY"
