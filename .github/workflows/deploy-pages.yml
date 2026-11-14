@@ -108,6 +108,7 @@ jobs:
           node scripts/ai-card-smoke.mjs
           node scripts/converter-adobe-smoke.mjs
           node scripts/pointer-effects-smoke.mjs
+          node scripts/tool-assistant-smoke.mjs
       - name: Verify built HTML assets and SEO URLs
         working-directory: restored-tools
         run: |
