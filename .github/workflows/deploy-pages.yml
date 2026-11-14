@@ -84,6 +84,13 @@ jobs:
         run: |
           npm run lint
           npm test
+      - name: Browser-test PDF Editor writing and downloaded output
+        working-directory: restored-tools
+        env:
+          GITHUB_PAGES: 'true'
+        run: |
+          npx playwright install --with-deps chromium
+          node scripts/pdf-editor-write-smoke.mjs
       - name: Verify built HTML assets and SEO URLs
         working-directory: restored-tools
         run: |
