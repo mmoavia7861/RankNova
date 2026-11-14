@@ -39,6 +39,16 @@ jobs:
           MODE=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.build_type // "legacy"')
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           echo "Pages mode: $MODE"
+          CNAME=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.cname // ""')
+          if [ "${CNAME,,}" = "toolcresta.com" ]; then
+            echo "base=/" >> "$GITHUB_OUTPUT"
+            echo "origin=https://toolcresta.com" >> "$GITHUB_OUTPUT"
+            echo "custom=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "base=/RankNova/" >> "$GITHUB_OUTPUT"
+            echo "origin=https://mmoavia7861.github.io" >> "$GITHUB_OUTPUT"
+            echo "custom=false" >> "$GITHUB_OUTPUT"
+          fi
           if [ "$MODE" != "legacy" ] && [ "$MODE" != "workflow" ]; then
             echo "::error::Unsupported Pages mode $MODE"
             exit 1
@@ -47,20 +57,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Configure restored tools for RankNova Pages path
-        working-directory: restored-tools
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('vite.config.ts')
-          s = p.read_text()
-          assert "'/tools-website/'" in s
-          p.write_text(s.replace("'/tools-website/'", "'/RankNova/'"))
-          p = Path('scripts/prepare-pages-seo.mjs')
-          s = p.read_text()
-          assert "'/tools-website/'" in s
-          p.write_text(s.replace('/tools-website/', '/RankNova/'))
-          PY
       - name: Install dependencies
         working-directory: restored-tools
         run: npm install --no-audit --no-fund
@@ -68,6 +64,8 @@ jobs:
         working-directory: restored-tools
         env:
           GITHUB_PAGES: 'true'
+          TOOLCRESTA_PAGES_BASE: ${{ steps.pages.outputs.base }}
+          TOOLCRESTA_SITE_ORIGIN: ${{ steps.pages.outputs.origin }}
           VITE_API_BASE_URL: ${{ vars.RANKNOVA_API_BASE_URL }}
           VITE_CONVERTER_API_URL: ${{ vars.RANKNOVA_CONVERTER_API_URL }}
           VITE_AI_CARD_API_URL: ${{ vars.RANKNOVA_CARD_API_URL }}
@@ -76,8 +74,9 @@ jobs:
           cp index.source.html index.html
           npm run build
           node scripts/prepare-pages-seo.mjs
+          if [ "${{ steps.pages.outputs.custom }}" = "true" ]; then printf 'toolcresta.com\n' > dist/CNAME; fi
           test -d dist/assets
-          grep -q '/RankNova/assets/' dist/index.html
+          grep -Fq "${{ steps.pages.outputs.base }}assets/" dist/index.html
           test -f dist/background-remover/index.html
           test -f dist/edit-pdf/index.html
           test -f dist/visiting-card-generator/index.html
