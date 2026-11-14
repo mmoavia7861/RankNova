@@ -84,6 +84,8 @@ jobs:
           test -f dist/ai-card-generator/index.html
           test -f dist/wedding-card-maker/index.html
           test -f dist/birthday-card-maker/index.html
+          test -f dist/admin/index.html
+          grep -q 'noindex, nofollow' dist/admin/index.html
           test -f dist/compress-pdf/index.html
       - name: Run TypeScript checks and utility tests
         working-directory: restored-tools
@@ -154,12 +156,12 @@ jobs:
           cp -R dist/assets assets
           cp dist/robots.txt robots.txt
           cp dist/sitemap.xml sitemap.xml
-          for route in about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video pdf-to-word word-to-pdf ai-card-generator wedding-card-maker birthday-card-maker blog; do
+          for route in admin about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video pdf-to-word word-to-pdf ai-card-generator wedding-card-maker birthday-card-maker blog; do
             rm -rf "$route"
             cp -R "dist/$route" "$route"
           done
           touch .nojekyll
-          git add index.html 404.html assets robots.txt sitemap.xml .nojekyll about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video pdf-to-word word-to-pdf ai-card-generator wedding-card-maker birthday-card-maker blog
+          git add index.html 404.html assets robots.txt sitemap.xml .nojekyll admin about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video pdf-to-word word-to-pdf ai-card-generator wedding-card-maker birthday-card-maker blog
           if ! git diff --cached --quiet; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
