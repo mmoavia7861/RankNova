@@ -87,7 +87,7 @@ jobs:
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import path from 'node:path';
-          const routes = ['','background-remover','edit-pdf','compress-pdf','visiting-card-generator','image-to-pdf','qr-code-generator','compress-video'];
+          const routes = ['','background-remover','edit-pdf','compress-pdf','visiting-card-generator','image-to-pdf','qr-code-generator','compress-video','pdf-to-word','word-to-pdf'];
           for (const route of routes) {
             const html = fs.readFileSync(path.join('dist',route,'index.html'),'utf8');
             const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(x=>x[1]);
@@ -113,7 +113,7 @@ jobs:
         run: |
           test -s dist/index.html
           test -d dist/assets
-          for route in background-remover edit-pdf compress-pdf visiting-card-generator image-to-pdf qr-code-generator compress-video; do
+          for route in background-remover edit-pdf compress-pdf visiting-card-generator image-to-pdf qr-code-generator compress-video pdf-to-word word-to-pdf; do
             test -s "dist/$route/index.html"
           done
           grep -q '/RankNova/assets/' dist/index.html
@@ -129,12 +129,12 @@ jobs:
           cp -R dist/assets assets
           cp dist/robots.txt robots.txt
           cp dist/sitemap.xml sitemap.xml
-          for route in about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video blog; do
+          for route in about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video pdf-to-word word-to-pdf blog; do
             rm -rf "$route"
             cp -R "dist/$route" "$route"
           done
           touch .nojekyll
-          git add index.html 404.html assets robots.txt sitemap.xml .nojekyll about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video blog
+          git add index.html 404.html assets robots.txt sitemap.xml .nojekyll about contact privacy-policy terms acceptable-use copyright-dmca qr-code-generator compress-pdf image-to-pdf edit-pdf background-remover visiting-card-generator compress-video pdf-to-word word-to-pdf blog
           if ! git diff --cached --quiet; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
