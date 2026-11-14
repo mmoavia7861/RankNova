@@ -1,0 +1,85 @@
+name: Deploy RankNova Gemini Card Backend
+
+# The backend source lives in mmoavia7861/tools-website/card-ai-worker.
+# GitHub Actions deploys it to a real HTTPS endpoint. GitHub Pages remains
+# static and does not expose GEMINI_API_KEY or TURNSTILE_SECRET in client JS.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ranknova-card-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy Gemini card API
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout card backend from GitHub source repository
+        uses: actions/checkout@v4
+        with:
+          repository: mmoavia7861/tools-website
+          ref: main
+          path: tools
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Test worker validation, anti-bot checks, and Gemini response
+        run: node --test tools/card-ai-worker/worker.test.mjs
+
+      - name: Check server secrets before attempting a paid or external operation
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID GEMINI_API_KEY TURNSTILE_SECRET; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing GitHub Actions repository secret: ${name}"
+              exit 1
+            fi
+          done
+          echo "All four required encrypted repository secrets are configured."
+
+      - name: Deploy actual Gemini backend to Cloudflare Worker
+        id: worker
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: tools/card-ai-worker
+          wranglerVersion: '4'
+          command: deploy
+          secrets: |
+            GEMINI_API_KEY
+            TURNSTILE_SECRET
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
+
+      - name: Show safe frontend integration instructions
+        env:
+          WORKER_URL: ${{ steps.worker.outputs.deployment-url }}
+        run: |
+          set -euo pipefail
+          echo "## AI Card Backend deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Cloudflare Worker URL: ${WORKER_URL:-See the deploy step for the workers.dev URL.}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "To activate Gemini in the RankNova frontend, set these **repository variables** (not secrets) in the RankNova repository:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`RANKNOVA_CARD_API_URL\`: exact Worker HTTPS base URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`RANKNOVA_TURNSTILE_SITE_KEY\`: public Cloudflare Turnstile site key" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Then manually run the **Deploy RankNova frontend to GitHub Pages** workflow." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Never put the Gemini API key or Turnstile secret in variables, frontend code, or this summary." >> "$GITHUB_STEP_SUMMARY"
