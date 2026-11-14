@@ -102,6 +102,7 @@ jobs:
         env:
           GITHUB_PAGES: 'true'
           PAGES_BASE_PATH: ${{ steps.pages.outputs.base }}
+          TOOLCRESTA_PAGES_BASE: ${{ steps.pages.outputs.base }}
         run: |
           npx playwright install --with-deps chromium
           node scripts/pdf-editor-write-smoke.mjs
