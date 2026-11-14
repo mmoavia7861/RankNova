@@ -1,4 +1,4 @@
-# PDF Editor QA: render high-resolution previews and validate on-device annotations.
+# PDF Editor QA: test inline existing-text replacement and genuine fillable PDF text-field updates.
 name: Deploy RankNova frontend to GitHub Pages
 
 on:
