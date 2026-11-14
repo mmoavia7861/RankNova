@@ -92,6 +92,9 @@ jobs:
       - name: Test secure AI card Worker contract
         working-directory: restored-tools
         run: node --test card-ai-worker/worker.test.mjs
+      - name: Test Adobe PDF Services Worker contract (mock API)
+        working-directory: restored-tools
+        run: node --test adobe-converter-worker/worker.test.mjs
       - name: Browser-test PDF Editor writing and downloaded output
         working-directory: restored-tools
         env:
@@ -100,6 +103,7 @@ jobs:
           npx playwright install --with-deps chromium
           node scripts/pdf-editor-write-smoke.mjs
           node scripts/ai-card-smoke.mjs
+          node scripts/converter-adobe-smoke.mjs
       - name: Verify built HTML assets and SEO URLs
         working-directory: restored-tools
         run: |
