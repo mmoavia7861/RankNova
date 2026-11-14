@@ -101,6 +101,7 @@ jobs:
         working-directory: restored-tools
         env:
           GITHUB_PAGES: 'true'
+          PAGES_BASE_PATH: ${{ steps.pages.outputs.base }}
         run: |
           npx playwright install --with-deps chromium
           node scripts/pdf-editor-write-smoke.mjs
@@ -110,19 +111,24 @@ jobs:
           node scripts/tool-assistant-smoke.mjs
       - name: Verify built HTML assets and SEO URLs
         working-directory: restored-tools
+        env:
+          PAGES_BASE_PATH: ${{ steps.pages.outputs.base }}
+          SITE_ORIGIN: ${{ steps.pages.outputs.origin }}
         run: |
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import path from 'node:path';
           const routes = ['','background-remover','edit-pdf','compress-pdf','visiting-card-generator','image-to-pdf','qr-code-generator','compress-video','pdf-to-word','word-to-pdf','ai-card-generator','wedding-card-maker','birthday-card-maker'];
+          const base = process.env.PAGES_BASE_PATH || '/RankNova/';
+          const origin = process.env.SITE_ORIGIN || 'https://mmoavia7861.github.io';
           for (const route of routes) {
             const html = fs.readFileSync(path.join('dist',route,'index.html'),'utf8');
             const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(x=>x[1]);
             const styles = [...html.matchAll(/<link[^>]+href="([^"]+\.css)"/g)].map(x=>x[1]);
             if (!scripts.length || !styles.length) throw new Error('Missing JS/CSS on '+route);
             for (const url of [...scripts,...styles]) {
-              if (!url.startsWith('/RankNova/')) throw new Error('Wrong asset path '+url);
-              const file = path.join('dist',url.slice('/RankNova/'.length));
+              if (!url.startsWith(base)) throw new Error('Wrong asset path '+url);
+              const file = path.join('dist',url.slice(base.length));
               if (!fs.existsSync(file)) throw new Error('Missing asset '+file);
             }
             if (!html.includes('rel="canonical"')) throw new Error('Missing canonical '+route);
@@ -130,6 +136,10 @@ jobs:
           }
           const sitemap=fs.readFileSync('dist/sitemap.xml','utf8');
           if(sitemap.includes('/tools-website/')) throw new Error('Stale sitemap URLs');
+          if(!sitemap.includes('<loc>'+origin+base+'</loc>')) throw new Error('Wrong sitemap origin/base');
+          const robots=fs.readFileSync('dist/robots.txt','utf8');
+          if(!robots.includes('Sitemap: '+origin+base+'sitemap.xml')) throw new Error('Wrong robots sitemap');
+          if(!robots.includes('Disallow: '+base+'admin/')) throw new Error('Wrong admin robots rule');
           console.log('All existing tool routes plus AI and invitation cards have valid compiled assets, canonical URLs, and sitemap.');
           JS
       - name: Copy production output into publishing workspace
@@ -143,7 +153,7 @@ jobs:
           for route in background-remover edit-pdf compress-pdf visiting-card-generator image-to-pdf qr-code-generator compress-video pdf-to-word word-to-pdf ai-card-generator wedding-card-maker birthday-card-maker; do
             test -s "dist/$route/index.html"
           done
-          grep -q '/RankNova/assets/' dist/index.html
+          grep -Fq "${{ steps.pages.outputs.base }}assets/" dist/index.html
           if grep -q '/tools-website/assets/' dist/index.html; then
             echo "::error::Wrong asset base path"; exit 1
           fi
